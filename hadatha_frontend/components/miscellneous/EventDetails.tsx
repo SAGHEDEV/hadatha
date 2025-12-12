@@ -10,6 +10,7 @@ import Link from "next/link";
 import CheckInModal from "../events/CheckinModal";
 import { CreateNFTModal } from "../events/CreateNFTModal";
 import GeneratedQrModal from "../events/GeneratedQrModal";
+import ShareModal from "./ShareModal";
 import { useCurrentAccount } from "@mysten/dapp-kit";
 import { useGetDerivedAddress } from "@/hooks/sui/useCheckAccountExistence";
 import { useToggleAllowCheckin } from "@/hooks/sui/useCheckin";
@@ -51,6 +52,7 @@ const EventDetails = ({ event, preview = false }: { event: Event, preview?: bool
     const [isCheckInModalOpen, setIsCheckInModalOpen] = useState(false)
     const [isCreateNFTModalOpen, setIsCreateNFTModalOpen] = useState(false)
     const [isGeneratedQrModalOpen, setIsGeneratedQrModalOpen] = useState(false)
+    const [isShareModalOpen, setIsShareModalOpen] = useState(false)
     const currentAccount = useCurrentAccount()
     const derivedAddress = useGetDerivedAddress(currentAccount?.address)
     const [actionEffect, setActionEffect] = useState({ open: false, type: "success" as "success" | "error", title: "", description: "" })
@@ -101,7 +103,10 @@ const EventDetails = ({ event, preview = false }: { event: Event, preview?: bool
                             </div>
                         )}
                         {!preview && <div className="absolute top-4 right-4">
-                            <button className="p-3 rounded-full bg-black/40 backdrop-blur-md border border-white/10 text-white hover:bg-white/10 transition-all">
+                            <button
+                                onClick={() => setIsShareModalOpen(true)}
+                                className="p-3 rounded-full bg-black/40 backdrop-blur-md border border-white/10 text-white hover:bg-white/10 transition-all cursor-pointer"
+                            >
                                 <Share2 className="w-5 h-5" />
                             </button>
                         </div>}
@@ -417,6 +422,11 @@ const EventDetails = ({ event, preview = false }: { event: Event, preview?: bool
                 open={isGeneratedQrModalOpen}
                 setOpen={setIsGeneratedQrModalOpen}
                 eventId={event.id}
+            />
+            <ShareModal
+                event={event}
+                open={isShareModalOpen}
+                setOpen={setIsShareModalOpen}
             />
             <StatusModal isOpen={actionEffect.open} onClose={() => setActionEffect((prev) => ({ ...prev, open: false }))} type={actionEffect.type} title={actionEffect.title} description={actionEffect.description} />
         </div>

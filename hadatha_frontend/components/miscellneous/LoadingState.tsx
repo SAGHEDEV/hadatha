@@ -36,6 +36,7 @@ const LoadingState = ({ loadingText }: { loadingText: string }) => {
 
     return (
         <div className="flex items-center justify-center w-screen h-screen fixed top-0 left-0 right-0 bottom-0 z-50 bg-black/50 backdrop-blur-sm">
+
             <motion.div
                 variants={container}
                 initial="hidden"

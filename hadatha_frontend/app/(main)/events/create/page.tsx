@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Eye, Edit3, Save } from "lucide-react"
 import LaunchAppBtn from "@/components/miscellneous/LaunchAppBtn"
 import { useCurrentAccount } from "@mysten/dapp-kit"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { useCreateEvent } from "@/hooks/sui/useCreateEvent"
 import { useUploadToWalrus } from "@/hooks/useUploadToWalrus"
 import { useGetDerivedAddress } from "@/hooks/sui/useCheckAccountExistence"
@@ -55,6 +55,7 @@ export default function CreateEventPage() {
     const { createEvent, isCreating } = useCreateEvent()
     const derivedAddress = useGetDerivedAddress(currentAccount?.address);
     const [openEffectModal, setOpenEffectModal] = useState({ open: false, title: "", message: "", type: "success" as "success" | "error" })
+    const router = useRouter()
 
 
 
@@ -180,7 +181,7 @@ export default function CreateEventPage() {
                     </TabsContent>
                 </Tabs>
             </FormProvider>
-            <StatusModal isOpen={openEffectModal.open} title={openEffectModal.title} description={openEffectModal.message} type={openEffectModal.type} onClose={() => setOpenEffectModal({ open: false, title: "", message: "", type: "success" })} />
+            <StatusModal isOpen={openEffectModal.open} title={openEffectModal.title} description={openEffectModal.message} type={openEffectModal.type} onClose={() => { router.push("/events"); setOpenEffectModal({ open: false, title: "", message: "", type: "success" }) }} />
         </div>
     )
 }

@@ -14,6 +14,7 @@ import LoadingState from "@/components/miscellneous/LoadingState"
 import { useCreateAccount } from "@/hooks/sui/useCreateAccount"
 import { useUploadToWalrus } from "@/hooks/useUploadToWalrus"
 import StatusModal from "@/components/miscellneous/StatusModal"
+import { useCurrentAccount } from "@mysten/dapp-kit"
 
 const formSchema = z.object({
     image_url: z
@@ -27,6 +28,7 @@ type FormValues = z.infer<typeof formSchema>
 
 const CreateAccountPage = () => {
     const [imagePreview, setImagePreview] = useState<string | null>(null)
+    const currentAccount = useCurrentAccount();
     const router = useRouter()
     const { hasAccount, isLoading } = useCheckAccountExistence();
     const { createAccount, isCreating } = useCreateAccount();
@@ -71,6 +73,12 @@ const CreateAccountPage = () => {
             reader.readAsDataURL(file)
         }
     }
+
+    useEffect(() => {
+        if (!currentAccount) {
+            router.push("/")
+        }
+    }, [currentAccount])
 
     useEffect(() => {
         if (hasAccount && !isLoading) {

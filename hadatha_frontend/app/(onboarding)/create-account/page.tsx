@@ -5,7 +5,7 @@ import { Camera, Plus } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
-import { useEffect, useState } from "react"
+import { useEffect, useState, Suspense } from "react"
 import Image from "next/image"
 import Logo from "@/components/miscellneous/Logo"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -26,7 +26,7 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>
 
-const CreateAccountPage = () => {
+const CreateAccountForm = () => {
     const [imagePreview, setImagePreview] = useState<string | null>(null)
     const currentAccount = useCurrentAccount();
     const router = useRouter()
@@ -78,13 +78,13 @@ const CreateAccountPage = () => {
         if (!currentAccount) {
             router.push("/")
         }
-    }, [currentAccount])
+    }, [currentAccount, router])
 
     useEffect(() => {
         if (hasAccount && !isLoading) {
             router.push(redirectUrl || "/dashboard")
         }
-    }, [hasAccount, isLoading])
+    }, [hasAccount, isLoading, redirectUrl, router])
 
     if (isLoading && !hasAccount) {
         return <LoadingState loadingText="Checking account status..." />
@@ -185,6 +185,14 @@ const CreateAccountPage = () => {
                 type={openEffectModal.status} title={openEffectModal.message} description={openEffectModal.description} actionLabel="Close"
                 onAction={() => { setOpenEffectModal({ open: false, status: "success", message: "", description: "" }); router.push(redirectUrl ? "/dashboard?redirect=" + redirectUrl : "/dashboard") }} />
         </div>
+    )
+}
+
+const CreateAccountPage = () => {
+    return (
+        <Suspense fallback={<LoadingState loadingText="Loading..." />}>
+            <CreateAccountForm />
+        </Suspense>
     )
 }
 

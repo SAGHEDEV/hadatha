@@ -44,8 +44,8 @@ export interface AttendeeDetails {
 }
 
 // Main hook to get event attendees from the Table
-export const useGetEventAttendeesFromTable = (eventId: string) => {
-    const { data: eventData, isLoading: eventLoading, error: eventError } = useSuiClientQuery(
+export const useGetEventAttendeesFromTable = (eventId: string, refetchInterval?: number) => {
+    const { data: eventData, isLoading: eventLoading, error: eventError, refetch: refetchEvent } = useSuiClientQuery(
         "getObject",
         {
             id: eventId,
@@ -55,6 +55,7 @@ export const useGetEventAttendeesFromTable = (eventId: string) => {
         },
         {
             enabled: !!eventId,
+            refetchInterval,
         }
     );
 
@@ -71,13 +72,14 @@ export const useGetEventAttendeesFromTable = (eventId: string) => {
     })) || [];
 
     // Get all dynamic fields (attendees) from the table
-    const { data: dynamicFields, isLoading: fieldsLoading, error: fieldsError } = useSuiClientQuery(
+    const { data: dynamicFields, isLoading: fieldsLoading, error: fieldsError, refetch: refetchFields } = useSuiClientQuery(
         "getDynamicFields",
         {
             parentId: tableId!,
         },
         {
             enabled: !!tableId,
+            refetchInterval,
         }
     );
 
@@ -85,7 +87,7 @@ export const useGetEventAttendeesFromTable = (eventId: string) => {
     const attendeeObjectIds = dynamicFields?.data?.map(field => field.objectId) || [];
 
     // Fetch all attendee objects
-    const { data: attendeeObjects, isLoading: objectsLoading, error: objectsError } = useSuiClientQuery(
+    const { data: attendeeObjects, isLoading: objectsLoading, error: objectsError, refetch: refetchObjects } = useSuiClientQuery(
         "multiGetObjects",
         {
             ids: attendeeObjectIds,
@@ -95,11 +97,17 @@ export const useGetEventAttendeesFromTable = (eventId: string) => {
         },
         {
             enabled: attendeeObjectIds.length > 0,
+            refetchInterval,
         }
     );
 
     const isLoading = eventLoading || fieldsLoading || objectsLoading;
     const error = eventError || fieldsError || objectsError;
+
+    // Refetch function that triggers all queries
+    const refetch = async () => {
+        await Promise.all([refetchEvent(), refetchFields(), refetchObjects()]);
+    };
 
     if (isLoading) {
         return {
@@ -107,7 +115,8 @@ export const useGetEventAttendeesFromTable = (eventId: string) => {
             isLoading: true,
             error: null,
             registrationFields,
-            summary: { total: 0, checkedIn: 0, nftMinted: 0 }
+            summary: { total: 0, checkedIn: 0, nftMinted: 0 },
+            refetch
         };
     }
 
@@ -118,7 +127,8 @@ export const useGetEventAttendeesFromTable = (eventId: string) => {
             isLoading: false,
             error,
             registrationFields,
-            summary: { total: 0, checkedIn: 0, nftMinted: 0 }
+            summary: { total: 0, checkedIn: 0, nftMinted: 0 },
+            refetch
         };
     }
 
@@ -128,7 +138,8 @@ export const useGetEventAttendeesFromTable = (eventId: string) => {
             isLoading: false,
             error: null,
             registrationFields,
-            summary: { total: 0, checkedIn: 0, nftMinted: 0 }
+            summary: { total: 0, checkedIn: 0, nftMinted: 0 },
+            refetch
         };
     }
 
@@ -190,6 +201,7 @@ export const useGetEventAttendeesFromTable = (eventId: string) => {
             error: null,
             registrationFields,
             summary,
+            refetch,
         };
     } catch (error) {
         console.error('Error parsing attendees:', error);
@@ -198,21 +210,23 @@ export const useGetEventAttendeesFromTable = (eventId: string) => {
             isLoading: false,
             error: error as Error,
             registrationFields,
-            summary: { total: 0, checkedIn: 0, nftMinted: 0 }
+            summary: { total: 0, checkedIn: 0, nftMinted: 0 },
+            refetch
         };
     }
 };
 
 // Enhanced hook that includes account details
-export const useGetEventAttendeesWithAccounts = (eventId: string) => {
+export const useGetEventAttendeesWithAccounts = (eventId: string, refetchInterval?: number) => {
     // Get base attendee data
     const {
         attendees: baseAttendees,
         isLoading: attendeesLoading,
         error: attendeesError,
         registrationFields,
-        summary
-    } = useGetEventAttendeesFromTable(eventId);
+        summary,
+        refetch: refetchAttendees
+    } = useGetEventAttendeesFromTable(eventId, refetchInterval);
 
     // Extract unique addresses
     const uniqueAddresses = Array.from(new Set(baseAttendees.map(a => a.address)));
@@ -235,7 +249,7 @@ export const useGetEventAttendeesWithAccounts = (eventId: string) => {
     const accountIds = accountIdsWithAddress.map(item => item.id);
 
     // Fetch account objects
-    const { data: accountObjects, isLoading: accountsLoading } = useSuiClientQuery(
+    const { data: accountObjects, isLoading: accountsLoading, refetch: refetchAccounts } = useSuiClientQuery(
         "multiGetObjects",
         {
             ids: accountIds,
@@ -245,10 +259,16 @@ export const useGetEventAttendeesWithAccounts = (eventId: string) => {
         },
         {
             enabled: accountIds.length > 0,
+            refetchInterval,
         }
     );
 
     const isLoading = attendeesLoading || accountsLoading;
+
+    // Refetch function that triggers all queries
+    const refetch = async () => {
+        await Promise.all([refetchAttendees(), refetchAccounts()]);
+    };
 
     if (isLoading) {
         return {
@@ -256,7 +276,8 @@ export const useGetEventAttendeesWithAccounts = (eventId: string) => {
             isLoading: true,
             error: null,
             registrationFields,
-            summary: { total: 0, checkedIn: 0, nftMinted: 0 }
+            summary: { total: 0, checkedIn: 0, nftMinted: 0 },
+            refetch
         };
     }
 
@@ -266,7 +287,8 @@ export const useGetEventAttendeesWithAccounts = (eventId: string) => {
             isLoading: false,
             error: attendeesError,
             registrationFields,
-            summary: { total: 0, checkedIn: 0, nftMinted: 0 }
+            summary: { total: 0, checkedIn: 0, nftMinted: 0 },
+            refetch
         };
     }
 
@@ -315,6 +337,7 @@ export const useGetEventAttendeesWithAccounts = (eventId: string) => {
         error: null,
         registrationFields,
         summary,
+        refetch,
     };
 };
 

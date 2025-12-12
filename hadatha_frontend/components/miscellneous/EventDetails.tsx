@@ -16,6 +16,7 @@ import { useGetDerivedAddress } from "@/hooks/sui/useCheckAccountExistence";
 import { useToggleAllowCheckin } from "@/hooks/sui/useCheckin";
 import StatusModal from "./StatusModal";
 import { useRouter } from "next/navigation";
+import { useMintAttendanceNFT } from "@/hooks/sui/useMintAttendeeNFT";
 
 // Helper function to format date
 export const formatDate = (dateString: string): string => {
@@ -57,6 +58,7 @@ const EventDetails = ({ event, preview = false }: { event: Event, preview?: bool
     const derivedAddress = useGetDerivedAddress(currentAccount?.address)
     const [actionEffect, setActionEffect] = useState({ open: false, type: "success" as "success" | "error", title: "", description: "" })
     const { toggleAllowCheckin, isToggling } = useToggleAllowCheckin()
+    const { mintNFT, isMinting } = useMintAttendanceNFT()
     const router = useRouter()
 
     console.log(event)
@@ -120,7 +122,7 @@ const EventDetails = ({ event, preview = false }: { event: Event, preview?: bool
                         <div className="flex flex-wrap items-center gap-6 text-white/60">
                             <div className="flex items-center gap-2">
                                 <Calendar className="w-5 h-5" />
-                                <span>{formatDate(event.date)}</span>
+                                <span>{preview ? event.date : formatDate(event.date)}</span>
                             </div>
                             <div className="flex items-center gap-2">
                                 <MapPin className="w-5 h-5" />
@@ -207,7 +209,7 @@ const EventDetails = ({ event, preview = false }: { event: Event, preview?: bool
                                 </div>
                                 <div className="flex flex-col">
                                     <span className="text-white/60 text-sm">Date</span>
-                                    <span className="text-white font-medium">{formatDate(event.date)}</span>
+                                    <span className="text-white font-medium">{preview ? event.date : formatDate(event.date)}</span>
                                 </div>
                             </div>
 
@@ -218,7 +220,7 @@ const EventDetails = ({ event, preview = false }: { event: Event, preview?: bool
                                 <div className="flex flex-col">
                                     <span className="text-white/60 text-sm">Time</span>
                                     <span className="text-white font-medium">
-                                        {formatTime(event.start_time)} - {formatTime(event.end_time)}
+                                        {preview ? event.start_time : formatTime(event.start_time)} - {preview ? event.end_time : formatTime(event.end_time)}
                                     </span>
                                 </div>
                             </div>
@@ -298,16 +300,17 @@ const EventDetails = ({ event, preview = false }: { event: Event, preview?: bool
                                         >
                                             Check In
                                         </Button>
-                                    ) : (!hasEventEnded && event.allowCheckin) ? <p className="text-center">Attendees are not allowed to check-in yet</p> : <p className="text-center">Event has ended</p>}
+                                    ) : (!hasEventEnded && !event.allowCheckin) ? <p className="text-center">Attendees are not allowed to check-in yet</p> : <p className="text-center">Event has ended</p>}
 
                                     {/* Mint NFT Button (if event has ended and user is registered) */}
                                     {(isRegistered && isAttended && hasEventEnded) && (
                                         <Button
-                                            onClick={() => setIsCreateNFTModalOpen(true)}
-                                            disabled={preview}
+                                            onClick={() => mintNFT({ eventId: event.id, accountId: derivedAddress })}
+
+                                            disabled={preview || isMinting}
                                             className="w-full rounded-full py-6 text-lg font-semibold bg-purple-700 text-white hover:bg-purple-600 active:scale-95 transition-all hover:scale-105 cursor-pointer"
                                         >
-                                            Mint Attendance NFT
+                                            {isMinting ? "Minting..." : "Mint Attendance NFT"}
                                         </Button>
                                     )}
                                 </>

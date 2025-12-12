@@ -39,18 +39,20 @@ const getAvatarUrl = (address: string, name?: string): string => {
 };
 
 // Get all EventCreated events
-export const useGetAllEvents = () => {
+export const useGetAllEvents = (refetchInterval?: number) => {
     return useSuiClientQuery("queryEvents", {
         query: {
             MoveEventType: `${REGISTRY_PACKAGE_ID}::${HADATHA_MODULE}::EventCreated`
         },
         order: "descending"
+    }, {
+        refetchInterval,
     });
 };
 
 // Extract event IDs from EventCreated events
-const useGetEventIds = () => {
-    const { data, isLoading, error } = useGetAllEvents();
+const useGetEventIds = (refetchInterval?: number) => {
+    const { data, isLoading, error, refetch } = useGetAllEvents(refetchInterval);
 
     // console.log('Event IDs Query:', { data, isLoading, error });
 
@@ -63,17 +65,17 @@ const useGetEventIds = () => {
 
     // console.log('Extracted Event IDs:', eventIds);
 
-    return { eventIds, isLoading, error };
+    return { eventIds, isLoading, error, refetch };
 };
 
 // Get all event details
-export const useGetAllEventDetails = () => {
-    const { eventIds, isLoading: idsLoading, error: idsError } = useGetEventIds();
+export const useGetAllEventDetails = (refetchInterval?: number) => {
+    const { eventIds, isLoading: idsLoading, error: idsError, refetch: refetchIds } = useGetEventIds(refetchInterval);
 
     // console.log('Event IDs for fetching:', { eventIds, idsLoading, idsError });
 
     // 1. Fetch all event objects
-    const { data: eventDetails, isLoading: eventsLoading, error: eventsError } = useSuiClientQuery(
+    const { data: eventDetails, isLoading: eventsLoading, error: eventsError, refetch: refetchEvents } = useSuiClientQuery(
         "multiGetObjects",
         {
             ids: eventIds,
@@ -84,6 +86,7 @@ export const useGetAllEventDetails = () => {
         },
         {
             enabled: eventIds.length > 0,
+            refetchInterval,
         }
     );
 
@@ -132,7 +135,7 @@ export const useGetAllEventDetails = () => {
     // console.log('Account IDs to fetch:', accountIds);
 
     // 4. Fetch all account objects
-    const { data: accountObjects, isLoading: accountsLoading } = useSuiClientQuery(
+    const { data: accountObjects, isLoading: accountsLoading, refetch: refetchAccounts } = useSuiClientQuery(
         "multiGetObjects",
         {
             ids: accountIds,
@@ -142,6 +145,7 @@ export const useGetAllEventDetails = () => {
         },
         {
             enabled: accountIds.length > 0,
+            refetchInterval,
         }
     );
 
@@ -151,19 +155,24 @@ export const useGetAllEventDetails = () => {
     //     count: accountObjects?.length
     // });
 
+    // Refetch function that triggers all queries
+    const refetch = async () => {
+        await Promise.all([refetchIds(), refetchEvents(), refetchAccounts()]);
+    };
+
     if (idsLoading || eventsLoading || accountsLoading) {
         // console.log('Still loading:', { idsLoading, eventsLoading, accountsLoading });
-        return { events: [], isLoading: true, error: null };
+        return { events: [], isLoading: true, error: null, refetch };
     }
 
     if (eventsError) {
         // console.error('Events error:', eventsError);
-        return { events: [], isLoading: false, error: eventsError };
+        return { events: [], isLoading: false, error: eventsError, refetch };
     }
 
     if (!eventDetails || eventDetails.length === 0) {
         // console.log('No event details found');
-        return { events: [], isLoading: false, error: null };
+        return { events: [], isLoading: false, error: null, refetch };
     }
 
     // 5. Create a map of address -> AccountDetails
@@ -261,14 +270,14 @@ export const useGetAllEventDetails = () => {
 
     // console.log('Final events:', events);
 
-    return { events, isLoading: false, error: null };
+    return { events, isLoading: false, error: null, refetch };
 };
 
 // Get a single event by ID with organizer details
-export const useGetEventById = (eventId: string) => {
+export const useGetEventById = (eventId: string, refetchInterval?: number) => {
     console.log('Fetching event by ID:', eventId);
 
-    const { data, isLoading, error } = useSuiClientQuery(
+    const { data, isLoading, error, refetch: refetchEvent } = useSuiClientQuery(
         "getObject",
         {
             id: eventId,
@@ -279,6 +288,7 @@ export const useGetEventById = (eventId: string) => {
         },
         {
             enabled: !!eventId,
+            refetchInterval,
         }
     );
 
@@ -310,7 +320,7 @@ export const useGetEventById = (eventId: string) => {
     const accountIds = accountIdsWithAddress.map(item => item.id);
 
     // Fetch account objects
-    const { data: accountObjects, isLoading: accountsLoading } = useSuiClientQuery(
+    const { data: accountObjects, isLoading: accountsLoading, refetch: refetchAccounts } = useSuiClientQuery(
         "multiGetObjects",
         {
             ids: accountIds,
@@ -320,18 +330,24 @@ export const useGetEventById = (eventId: string) => {
         },
         {
             enabled: accountIds.length > 0,
+            refetchInterval,
         }
     );
 
     console.log('Account objects for single event:', { accountObjects, accountsLoading });
 
+    // Refetch function that triggers all queries
+    const refetch = async () => {
+        await Promise.all([refetchEvent(), refetchAccounts()]);
+    };
+
     if (isLoading || accountsLoading) {
-        return { event: null, isLoading: true, error };
+        return { event: null, isLoading: true, error, refetch };
     }
 
     if (!data || data.data?.content?.dataType !== "moveObject") {
         console.error('Invalid event data:', data);
-        return { event: null, isLoading: false, error: error || new Error("Invalid object type") };
+        return { event: null, isLoading: false, error: error || new Error("Invalid object type"), refetch };
     }
 
     const content = data.data.content as any;
@@ -356,43 +372,6 @@ export const useGetEventById = (eventId: string) => {
             }
         });
     }
-    // // Add this debugging code to your useGetEventById or useGetAllEventDetails hook
-
-    // // After getting the fields object, add this:
-    // console.log('=== DEBUGGING REGISTRATION FIELDS ===');
-    // console.log('Raw fields object:', JSON.stringify(fields, null, 2));
-    // console.log('registration_fields type:', typeof fields.registration_fields);
-    // console.log('registration_fields value:', fields.registration_fields);
-
-    // // Try different parsing approaches
-    // if (Array.isArray(fields.registration_fields)) {
-    //     console.log('registration_fields is an array with length:', fields.registration_fields.length);
-
-    //     fields.registration_fields.forEach((field: any, index: number) => {
-    //         console.log(`\n--- Field ${index} ---`);
-    //         console.log('Field object:', field);
-    //         console.log('Field keys:', Object.keys(field));
-    //         console.log('Field.name:', field.name);
-    //         console.log('Field.field_type:', field.field_type);
-    //         console.log('Field.fields:', field.fields);
-
-    //         // Try different access patterns
-    //         if (field.fields) {
-    //             console.log('Field.fields.name:', field.fields.name);
-    //             console.log('Field.fields.field_type:', field.fields.field_type);
-    //         }
-
-    //         // Try converting
-    //         if (field.name) {
-    //             console.log('Converted name:', bytesToString(field.name));
-    //         }
-    //         if (field.field_type) {
-    //             console.log('Converted field_type:', bytesToString(field.field_type));
-    //         }
-    //     });
-    // } else {
-    //     console.log('registration_fields is NOT an array:', fields.registration_fields);
-    // }
 
     // Modified parsing with better error handling
     const registration_fields = (() => {
@@ -468,40 +447,46 @@ export const useGetEventById = (eventId: string) => {
 
     console.log('Final parsed single event:', event);
 
-    return { event, isLoading: false, error: null };
+    return { event, isLoading: false, error: null, refetch };
 };
 
 // Get events by status
-export const useGetEventsByStatus = (status: "ongoing" | "closed" | "hidden" | "past") => {
-    const { events, isLoading, error } = useGetAllEventDetails();
+export const useGetEventsByStatus = (status: "ongoing" | "closed" | "hidden" | "past", refetchInterval?: number) => {
+    const { events, isLoading, error, refetch } = useGetAllEventDetails(refetchInterval);
 
     const filteredEvents = events.filter(event => event.status === status);
 
-    return { events: filteredEvents, isLoading, error };
+    return { events: filteredEvents, isLoading, error, refetch };
 };
 
 // Get events organized by a specific address
-export const useGetEventsByOrganizer = (organizerAddress: string) => {
-    const { events, isLoading, error } = useGetAllEventDetails();
+export const useGetEventsByOrganizer = (organizerAddress: string, refetchInterval?: number) => {
+    const { events, isLoading, error, refetch } = useGetAllEventDetails(refetchInterval);
 
     const organizerEvents = events.filter(event =>
         event.organizers.some(org => org.address === organizerAddress)
     );
 
-    return { events: organizerEvents, isLoading, error };
+    return { events: organizerEvents, isLoading, error, refetch };
 };
 
-export const useGetEventByIdWithAttendees = (eventId: string) => {
+export const useGetEventByIdWithAttendees = (eventId: string, refetchInterval?: number) => {
     // Get basic event data
-    const { event, isLoading: eventLoading, error: eventError } = useGetEventById(eventId);
+    const { event, isLoading: eventLoading, error: eventError, refetch: refetchEvent } = useGetEventById(eventId, refetchInterval);
 
     // Get attendees data
     const {
         attendees,
         isLoading: attendeesLoading,
         error: attendeesError,
-        summary
-    } = useGetEventAttendees(eventId);
+        summary,
+        refetch: refetchAttendees
+    } = useGetEventAttendees(eventId, refetchInterval);
+
+    // Refetch function that triggers both event and attendees queries
+    const refetch = async () => {
+        await Promise.all([refetchEvent(), refetchAttendees()]);
+    };
 
     if (eventLoading || attendeesLoading) {
         return {
@@ -509,7 +494,8 @@ export const useGetEventByIdWithAttendees = (eventId: string) => {
             attendees: [],
             isLoading: true,
             error: null,
-            summary: { total: 0, checkedIn: 0, nftMinted: 0 }
+            summary: { total: 0, checkedIn: 0, nftMinted: 0 },
+            refetch
         };
     }
 
@@ -519,7 +505,8 @@ export const useGetEventByIdWithAttendees = (eventId: string) => {
             attendees: [],
             isLoading: false,
             error: eventError || attendeesError,
-            summary: { total: 0, checkedIn: 0, nftMinted: 0 }
+            summary: { total: 0, checkedIn: 0, nftMinted: 0 },
+            refetch
         };
     }
 
@@ -535,7 +522,8 @@ export const useGetEventByIdWithAttendees = (eventId: string) => {
         attendees,
         isLoading: false,
         error: null,
-        summary
+        summary,
+        refetch
     };
 };
 

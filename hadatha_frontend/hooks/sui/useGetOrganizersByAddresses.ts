@@ -1,19 +1,8 @@
-import { useSuiClientQuery } from "@mysten/dapp-kit";
 import { ACCOUNT_ROOT_ID } from "@/lib/constant";
+import { useSuiClientQuery } from "@mysten/dapp-kit";
 import { bcs } from "@mysten/sui/bcs";
-import { deriveObjectID } from '@mysten/sui/utils';
-import { bytesToString } from "./useGetAllEvents";
-
-interface RawAccountFields {
-    id: { id: string };
-    name: number[];
-    email: number[];
-    image_url: number[];
-    total_attended: string | number;
-    total_organized: string | number;
-    total_hosted: string | number;
-    total_registered: string | number;
-}
+import { deriveObjectID } from "@mysten/sui/utils";
+import { bytesToString } from "./useGetEventAttendees";
 
 interface OrganizerDetails {
     name: string;
@@ -21,45 +10,39 @@ interface OrganizerDetails {
     address: string;
 }
 
-/**
- * Hook to fetch multiple organizer details by their wallet addresses
- * Used in event preview and event creation
- */
 export const useGetOrganizersByAddresses = (addresses: string[]) => {
-    // Derive account IDs from wallet addresses
-    const derivedIds = addresses.map(address => {
+    // Keep track of which addresses succeeded
+    const addressIdMap = addresses.map(address => {
         try {
-            return deriveObjectID(
+            const id = deriveObjectID(
                 ACCOUNT_ROOT_ID,
                 'address',
                 bcs.Address.serialize(address).toBytes(),
             );
+            return { address, id };
         } catch (error) {
             console.error(`Failed to derive ID for address ${address}:`, error);
-            return null;
+            return { address, id: null };
         }
-    }).filter(Boolean) as string[];
+    });
 
-    // Fetch all account objects
+    const derivedIds = addressIdMap
+        .filter(item => item.id !== null)
+        .map(item => item.id!);
+
     const { data, isLoading, error } = useSuiClientQuery(
         "multiGetObjects",
         {
             ids: derivedIds,
-            options: {
-                showContent: true,
-            }
+            options: { showContent: true }
         },
-        {
-            enabled: derivedIds.length > 0,
-        }
+        { enabled: derivedIds.length > 0 }
     );
 
-    // Parse the organizer details
-    const organizers: OrganizerDetails[] = addresses.map((address, index) => {
-        const accountObject = data?.[index];
-
-        if (!accountObject?.data?.content || accountObject.data.content.dataType !== "moveObject") {
-            // Return placeholder if account doesn't exist
+    // Map back to original addresses
+    const organizers: OrganizerDetails[] = addressIdMap.map(({ address, id }) => {
+        if (!id) {
+            // Derivation failed - return placeholder
             return {
                 name: address.slice(0, 6) + "..." + address.slice(-4),
                 avatarUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=" + address,
@@ -67,7 +50,19 @@ export const useGetOrganizersByAddresses = (addresses: string[]) => {
             };
         }
 
-        const rawFields = accountObject.data.content.fields as unknown as RawAccountFields;
+        const dataIndex = derivedIds.indexOf(id);
+        const accountObject = data?.[dataIndex];
+
+        if (!accountObject?.data?.content || accountObject.data.content.dataType !== "moveObject") {
+            return {
+                name: address.slice(0, 6) + "..." + address.slice(-4),
+                avatarUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=" + address,
+                address: address,
+            };
+        }
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const rawFields = accountObject.data.content.fields as unknown as any;
 
         return {
             name: bytesToString(rawFields.name) || address.slice(0, 6) + "..." + address.slice(-4),
@@ -76,9 +71,5 @@ export const useGetOrganizersByAddresses = (addresses: string[]) => {
         };
     });
 
-    return {
-        organizers,
-        isLoading,
-        error,
-    };
+    return { organizers, isLoading, error };
 };

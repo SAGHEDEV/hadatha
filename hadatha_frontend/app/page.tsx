@@ -1,6 +1,8 @@
 import LaunchAppBtn from "@/components/miscellneous/LaunchAppBtn";
 import Logo from "@/components/miscellneous/Logo";
 import { Button } from "@/components/ui/button";
+import { ArrowRight } from "lucide-react";
+import Link from "next/link";
 
 
 export default function Home() {
@@ -27,10 +29,15 @@ export default function Home() {
         </h4>
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-          <Button className="rounded-full px-12! py-5! min-h-[50px] cursor-pointer bg-white/5 backdrop-blur-lg border border-white/10 active:scale-95 hover:scale-x-105 transition-all duration-300">
+          <Button className="rounded-full px-12! py-8! min-h-[50px] cursor-pointer bg-white/5 backdrop-blur-lg border border-white/10 active:scale-95 hover:scale-x-105 transition-all duration-300">
             Watch Demo
           </Button>
-          <LaunchAppBtn />
+          <Link href="/events" className="rounded-full px-12! py-2 cursor-pointer bg-white text-black hover:bg-gray-300 border border-white/10 active:scale-95 hover:scale-x-105 transition-all duration-300 flex items-center justify-center gap-2">
+            Explore Events
+            <span className="p-2 rounded-full bg-black">
+              <ArrowRight size={24} color="white" />
+            </span>
+          </Link>
         </div>
       </div>
 

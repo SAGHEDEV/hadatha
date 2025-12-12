@@ -24,13 +24,13 @@ import { Calendar } from "@/components/ui/calendar"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { OrganizerSelector } from "./OrganizerSelector"
 import { CustomFieldsBuilder } from "./CustomFieldsBuilder"
+import { TagMultiSelect } from "./TagMultiSelect"
 import { useState } from "react"
 import Image from "next/image"
 
-export function CreateEventForm() {
+export function CreateEventForm({ isLoading }: { isLoading: boolean }) {
     const { control, setValue, watch } = useFormContext()
-    const [imagePreview, setImagePreview] = useState<string | null>(watch("image"))
-    const [tagInput, setTagInput] = useState("");
+    const [imagePreview, setImagePreview] = useState<string | null>(watch("imagePreviewUrl") ?? (typeof watch("image") === "string" ? watch("image") : null))
 
 
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -38,7 +38,8 @@ export function CreateEventForm() {
         if (file) {
             const url = URL.createObjectURL(file)
             setImagePreview(url)
-            setValue("image", url) // In a real app, this would be the file or uploaded URL
+            setValue("image", file) // In a real app, this would be the file or uploaded URL
+            setValue("imagePreviewUrl", url)
         }
     }
 
@@ -49,13 +50,19 @@ export function CreateEventForm() {
                 <h2 className="text-2xl font-bold text-white">Event Details</h2>
 
                 {/* Image Upload */}
-                <div className="relative h-64 w-full rounded-3xl border-2 border-dashed border-white/20 bg-white/5 overflow-hidden group hover:border-white/40 transition-colors">
+                <div className={cn(
+                    "relative h-64 w-full rounded-3xl border-2 border-dashed border-white/20 bg-white/5 overflow-hidden group transition-colors",
+                    !isLoading && "hover:border-white/40",
+                    isLoading && "opacity-50 cursor-not-allowed"
+                )}>
                     {imagePreview ? (
                         <>
                             <Image src={imagePreview} alt="Preview" fill className="object-cover" />
-                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                <p className="text-white font-medium">Click to change image</p>
-                            </div>
+                            {!isLoading && (
+                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                    <p className="text-white font-medium">Click to change image</p>
+                                </div>
+                            )}
                         </>
                     ) : (
                         <div className="absolute inset-0 flex flex-col items-center justify-center text-white/60 gap-2">
@@ -68,6 +75,7 @@ export function CreateEventForm() {
                         accept="image/*"
                         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                         onChange={handleImageChange}
+                        disabled={isLoading}
                     />
                 </div>
 
@@ -78,7 +86,7 @@ export function CreateEventForm() {
                         <FormItem>
                             <FormLabel className="text-white">Event Title</FormLabel>
                             <FormControl>
-                                <Input placeholder="Enter event title" {...field} value={field.value ?? ''} className="bg-white/5 border-white/10 text-white placeholder:text-white/40 focus:border-white/30 h-12 text-lg" />
+                                <Input disabled={isLoading} placeholder="Enter event title" {...field} value={field.value ?? ''} className="bg-white/5 border-white/10 text-white placeholder:text-white/40 focus:border-white/30 h-12 text-lg" />
                             </FormControl>
                             <FormMessage />
                         </FormItem>
@@ -93,6 +101,7 @@ export function CreateEventForm() {
                             <FormLabel className="text-white">Description</FormLabel>
                             <FormControl>
                                 <Textarea
+                                    disabled={isLoading}
                                     placeholder="Tell us about your event..."
                                     {...field}
                                     value={field.value ?? ''}
@@ -117,7 +126,7 @@ export function CreateEventForm() {
                             <FormItem>
                                 <FormLabel className="text-white">Organizers (Co-hosts)</FormLabel>
                                 <FormControl>
-                                    <OrganizerSelector value={field.value || []} onChange={field.onChange} />
+                                    <OrganizerSelector value={field.value || []} onChange={field.onChange} disabled={isLoading} />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -131,18 +140,10 @@ export function CreateEventForm() {
                             <FormItem>
                                 <FormLabel className="text-white">Tags</FormLabel>
                                 <FormControl>
-                                    <Input
-                                        placeholder="e.g., Technology, Music, Workshop"
-                                        value={tagInput}
-                                        onChange={(e) => setTagInput(e.target.value)}
-                                        onBlur={() => {
-                                            const tags = tagInput
-                                                .split(',')
-                                                .map(t => t.trim())
-                                                .filter(Boolean);
-                                            field.onChange(tags);
-                                        }}
-                                        className="bg-white/5 border-white/10 text-white placeholder:text-white/40 focus:border-white/30 h-12"
+                                    <TagMultiSelect
+                                        value={field.value || []}
+                                        onChange={field.onChange}
+                                        disabled={isLoading}
                                     />
                                 </FormControl>
                                 <FormMessage />
@@ -154,12 +155,12 @@ export function CreateEventForm() {
                         control={control}
                         name="location"
                         render={({ field }) => (
-                            <FormItem>
+                            <FormItem className="col-span-2">
                                 <FormLabel className="text-white">Location</FormLabel>
                                 <FormControl>
                                     <div className="relative">
                                         <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50" />
-                                        <Input placeholder="Event location" {...field} value={field.value ?? ''} className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-white/40 focus:border-white/30 h-12" />
+                                        <Input disabled={isLoading} placeholder="Event location" {...field} value={field.value ?? ''} className="pl-10  bg-white/5 border-white/10 text-white placeholder:text-white/40 focus:border-white/30 h-12" />
                                     </div>
                                 </FormControl>
                                 <FormMessage />
@@ -179,6 +180,7 @@ export function CreateEventForm() {
                                     <PopoverTrigger asChild>
                                         <FormControl>
                                             <Button
+                                                disabled={isLoading}
                                                 variant={"outline"}
                                                 className={cn(
                                                     "w-full pl-3 text-left font-normal bg-white/5 border-white/10 text-white hover:bg-white/10 hover:text-white h-12",
@@ -203,7 +205,7 @@ export function CreateEventForm() {
                                                 date < new Date() || date < new Date("1900-01-01")
                                             }
                                             initialFocus
-                                            className="text-white"
+                                            className="text-white bg-black!"
                                         />
                                     </PopoverContent>
                                 </Popover>
@@ -221,7 +223,7 @@ export function CreateEventForm() {
                                 <FormControl>
                                     <div className="relative">
                                         <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50" />
-                                        <Input type="time" {...field} value={field.value ?? ''} className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-white/40 focus:border-white/30 block h-12" />
+                                        <Input disabled={isLoading} type="time" {...field} value={field.value ?? ''} className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-white/40 focus:border-white/30 block h-12" />
                                     </div>
                                 </FormControl>
                                 <FormMessage />
@@ -238,7 +240,7 @@ export function CreateEventForm() {
                                 <FormControl>
                                     <div className="relative">
                                         <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50" />
-                                        <Input type="time" {...field} value={field.value ?? ''} className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-white/40 focus:border-white/30 block h-12" />
+                                        <Input disabled={isLoading} type="time" {...field} value={field.value ?? ''} className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-white/40 focus:border-white/30 block h-12" />
                                     </div>
                                 </FormControl>
                                 <FormMessage />
@@ -263,6 +265,7 @@ export function CreateEventForm() {
                                     onValueChange={field.onChange}
                                     defaultValue={field.value}
                                     className="flex flex-col space-y-1"
+                                    disabled={isLoading}
                                 >
                                     <FormItem className="flex items-center space-x-3 space-y-0">
                                         <FormControl>
@@ -295,6 +298,7 @@ export function CreateEventForm() {
                             <FormLabel className="text-white">Maximum Attendees</FormLabel>
                             <FormControl>
                                 <Input
+                                    disabled={isLoading}
                                     type="number"
                                     placeholder="e.g., 100"
                                     {...field}
@@ -314,7 +318,7 @@ export function CreateEventForm() {
                 <h2 className="text-2xl font-bold text-white">Registration Details</h2>
                 <p className="text-white/60 text-sm">Customize the information you want to collect from attendees.</p>
 
-                <CustomFieldsBuilder />
+                <CustomFieldsBuilder disabled={isLoading} />
             </div>
         </div>
     )

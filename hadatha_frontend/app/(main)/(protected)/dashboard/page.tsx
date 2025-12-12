@@ -3,78 +3,50 @@
 import StatsCard from "@/components/miscellneous/StatsCard"
 import EventCard from "@/components/miscellneous/EventCard"
 import { Calendar, Users, Ticket, AlertCircle } from "lucide-react"
+import { useCheckAccountExistence } from "@/hooks/sui/useCheckAccountExistence"
+import { useGetAllEventDetails } from "@/hooks/sui/useGetAllEvents"
+import LoadingState from "@/components/miscellneous/LoadingState"
 
 const Dashboard = () => {
+
+    const { account, isLoading } = useCheckAccountExistence()
+    const { events, isLoading: isEventsLoading, error: eventsError } = useGetAllEventDetails()
+    const upcomingEventsList = events ? events.slice(0, 3) : []
     // Mock Data
     const stats = [
         {
             title: "Events Attended",
-            value: "12",
+            value: account?.total_attended || "0",
             icon: Ticket,
             description: "Total events you participated in",
             trend: "+2 this month"
         },
         {
             title: "Events Hosted",
-            value: "5",
+            value: account?.total_organized || "0",
             icon: Calendar,
             description: "Events you organized",
             trend: "+1 this month"
         },
         {
             title: "People Hosted",
-            value: "1,234",
+            value: account?.total_hosted || "0",
             icon: Users,
             description: "Total attendees across your events",
             trend: "+15% vs last month"
         },
         {
             title: "Missed Events",
-            value: "3",
+            value: Number(account?.total_registered) - Number(account?.total_attended) || "0",
             icon: AlertCircle,
             description: "Registered but didn't attend",
             trend: "-1 this month"
         }
     ]
 
-    const upcomingEvents = [
-        {
-            id: 1,
-            title: "Sui Builder House: Lagos",
-            date: "Dec 15, 2025 • 10:00 AM",
-            location: "Eko Hotel & Suites, Lagos",
-            imageUrl: "https://images.unsplash.com/photo-1540575467063-178a50c2df87?q=80&w=2070&auto=format&fit=crop",
-            attendeesCount: 450,
-            organizer: {
-                name: "Sui Foundation",
-                avatarUrl: "https://cryptologos.cc/logos/sui-sui-logo.png"
-            }
-        },
-        {
-            id: 2,
-            title: "Web3 Design Summit",
-            date: "Jan 20, 2026 • 09:00 AM",
-            location: "Virtual Event",
-            imageUrl: "https://images.unsplash.com/photo-1558403194-611308249627?q=80&w=2070&auto=format&fit=crop",
-            attendeesCount: 1200,
-            organizer: {
-                name: "Design DAO",
-                avatarUrl: "https://ui-avatars.com/api/?name=Design+DAO&background=random"
-            }
-        },
-        {
-            id: 3,
-            title: "NFT Art Exhibition",
-            date: "Feb 05, 2026 • 06:00 PM",
-            location: "Art X Gallery, Lagos",
-            imageUrl: "https://images.unsplash.com/photo-1561214115-f2f134cc4912?q=80&w=2018&auto=format&fit=crop",
-            attendeesCount: 85,
-            organizer: {
-                name: "Art Collective",
-                avatarUrl: "https://ui-avatars.com/api/?name=Art+Collective&background=random"
-            }
-        }
-    ]
+    if (isLoading) {
+        return <LoadingState loadingText="Loading account stats..." />
+    }
 
     return (
         <div className="flex flex-col gap-12">
@@ -98,11 +70,25 @@ const Dashboard = () => {
                     <button className="text-sm text-white/60 hover:text-white transition-colors">View All</button>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {upcomingEvents.map((event) => (
-                        <EventCard key={event.id} {...event} />
-                    ))}
-                </div>
+                {isEventsLoading ? (
+                    <div className="flex items-center justify-center min-h-[200px] col-span-full">
+                        <LoadingState loadingText="Loading Events..." />
+                    </div>
+                ) : eventsError ? (
+                    <div className="flex items-center justify-center min-h-[200px] col-span-full text-red-400">
+                        <p>Error loading events: {eventsError.message}</p>
+                    </div>
+                ) : upcomingEventsList.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {upcomingEventsList.map((event) => (
+                            <EventCard key={event.id} {...event} />
+                        ))}
+                    </div>
+                ) : (
+                    <div className="flex flex-col items-center justify-center py-10 text-white/40 col-span-full">
+                        <p className="text-lg">No upcoming events</p>
+                    </div>
+                )}
             </div>
         </div>
     )

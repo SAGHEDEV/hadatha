@@ -1,0 +1,47 @@
+import { useCurrentAccount, useSignAndExecuteTransaction } from "@mysten/dapp-kit";
+import { Transaction } from "@mysten/sui/transactions";
+import { useMutation } from "@tanstack/react-query";
+import { REGISTRY_PACKAGE_ID, HADATHA_MODULE, CLOCK_ID } from "@/lib/constant";
+
+export const useMintAttendeeNFT = () => {
+    const account = useCurrentAccount();
+    const { mutateAsync: signAndExecuteTransaction } = useSignAndExecuteTransaction();
+
+    const mutation = useMutation({
+        mutationFn: async ({ event, account: accountId }: { event: string, account: string }) => {
+            if (!account) {
+                throw new Error('Wallet not connected');
+            }
+
+            try {
+                const tx = new Transaction();
+
+                tx.moveCall({
+                    target: `${REGISTRY_PACKAGE_ID}::${HADATHA_MODULE}::mint_attendance_nft`,
+                    arguments: [
+                        tx.object(event),
+                        tx.object(accountId),
+                        tx.object(CLOCK_ID),
+                    ],
+                });
+
+                const result = await signAndExecuteTransaction({
+                    transaction: tx,
+                });
+
+                console.log('✅ Attendee NFT minted successfully:', result);
+                return result;
+            } catch (error) {
+                console.error('❌ Error minting Attendee NFT:', error);
+                throw error;
+            }
+        },
+    });
+
+    return {
+        mintAttendeeNFT: mutation.mutateAsync,
+        isMinting: mutation.isPending,
+        error: mutation.error,
+        reset: mutation.reset,
+    };
+};

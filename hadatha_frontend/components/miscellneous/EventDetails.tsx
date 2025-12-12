@@ -2,19 +2,87 @@
 
 import { useState } from "react"
 import { Event } from "@/types";
-import { Calendar, Clock, Globe, MapPin, Share2 } from "lucide-react";
+import { Calendar, Clock, Globe, MapPin, Share2, Edit, Users, Image as ImageIcon, QrCode, Settings } from "lucide-react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { RegistrationModal } from "@/components/events/RegistrationModal";
 import Link from "next/link";
 import CheckInModal from "../events/CheckinModal";
+import { CreateNFTModal } from "../events/CreateNFTModal";
+import GeneratedQrModal from "../events/GeneratedQrModal";
+import { useCurrentAccount } from "@mysten/dapp-kit";
+import { useGetDerivedAddress } from "@/hooks/sui/useCheckAccountExistence";
+import { useToggleAllowCheckin } from "@/hooks/sui/useCheckin";
+import StatusModal from "./StatusModal";
+import { useRouter } from "next/navigation";
+
+// Helper function to format date
+export const formatDate = (dateString: string): string => {
+    const date = new Date(dateString);
+    const day = date.getDate();
+    const month = date.toLocaleDateString('en-US', { month: 'long' });
+    const year = date.getFullYear();
+    const weekday = date.toLocaleDateString('en-US', { weekday: 'long' });
+
+    // Get ordinal suffix
+    const getOrdinal = (n: number) => {
+        const s = ["th", "st", "nd", "rd"];
+        const v = n % 100;
+        return n + (s[(v - 20) % 10] || s[v] || s[0]);
+    };
+
+    return `${getOrdinal(day)} ${month} ${year}, ${weekday}`;
+};
+
+// Helper function to format time
+const formatTime = (dateString: string): string => {
+    const date = new Date(dateString);
+    let hours = date.getHours();
+    const minutes = date.getMinutes();
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12; // the hour '0' should be '12'
+    const minutesStr = minutes < 10 ? '0' + minutes : minutes;
+    return `${hours}:${minutesStr}${ampm}`;
+};
 
 const EventDetails = ({ event, preview = false }: { event: Event, preview?: boolean }) => {
     const [isRegistrationModalOpen, setIsRegistrationModalOpen] = useState(false)
     const [isCheckInModalOpen, setIsCheckInModalOpen] = useState(false)
+    const [isCreateNFTModalOpen, setIsCreateNFTModalOpen] = useState(false)
+    const [isGeneratedQrModalOpen, setIsGeneratedQrModalOpen] = useState(false)
+    const currentAccount = useCurrentAccount()
+    const derivedAddress = useGetDerivedAddress(currentAccount?.address)
+    const [actionEffect, setActionEffect] = useState({ open: false, type: "success" as "success" | "error", title: "", description: "" })
+    const { toggleAllowCheckin, isToggling } = useToggleAllowCheckin()
+    const router = useRouter()
+
+    console.log(event)
+    console.log("attendees", event.attendees)
+
+
+    // Check if current user is an organizer
+    const isOrganizer = currentAccount && event?.organizers.some(org => org.address === currentAccount?.address);
+    console.log(event?.attendees)
+    // Check if user is already registered
+    const isRegistered = derivedAddress && currentAccount?.address && event?.attendees?.includes(currentAccount?.address);
+
+    const isAttended = derivedAddress && currentAccount?.address && event?.attendeeDetails?.some((attendee) => (attendee.address === currentAccount?.address && attendee?.checkedIn))
+    console.log("isAttended", isAttended)
+    // Check if event is full
+    const isEventFull = (event?.attendeesCount || 0) >= (event?.maxAttendees || 0);
+
+    // Check if event has started
+    const hasEventStarted = new Date(event.start_time) <= new Date();
+
+    // Check if event has ended
+    const hasEventEnded = new Date(event.end_time) <= new Date();
+    console.log("hasEventEnded", hasEventEnded, "hasEventStarted", hasEventStarted)
+    console.log((isRegistered && !hasEventEnded && event.allowCheckin), isRegistered, !hasEventEnded, event.allowCheckin)
 
     return (
         <div className="flex flex-col gap-8">
+            <Button className="w-fit" onClick={() => router.back()}>Back to Events</Button>
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 relative">
                 <div className="lg:col-span-8 flex flex-col gap-8">
                     {/* Banner Image */}
@@ -47,7 +115,7 @@ const EventDetails = ({ event, preview = false }: { event: Event, preview?: bool
                         <div className="flex flex-wrap items-center gap-6 text-white/60">
                             <div className="flex items-center gap-2">
                                 <Calendar className="w-5 h-5" />
-                                <span>{event.date}</span>
+                                <span>{formatDate(event.date)}</span>
                             </div>
                             <div className="flex items-center gap-2">
                                 <MapPin className="w-5 h-5" />
@@ -105,15 +173,19 @@ const EventDetails = ({ event, preview = false }: { event: Event, preview?: bool
                         <h3 className="text-xl font-bold text-white">Attendees</h3>
                         <div className="flex items-center gap-4">
                             <div className="flex -space-x-4">
-                                {event.attendees?.map((url, i) => (
+                                {event.attendeeDetails?.slice(0, 5).map((detail, i) => (
                                     <div key={i} className="relative w-12 h-12 rounded-full border-2 border-black overflow-hidden">
-                                        <Image src={url} alt="Attendee" fill className="object-cover" />
+                                        <Image src={detail.avatarUrl} alt="Attendee" fill className="object-cover" />
                                     </div>
                                 ))}
                             </div>
-                            <span className="text-white/60 text-sm">
-                                +{(event.attendeesCount || 0) - (event.attendees?.length || 0)} others are going
-                            </span>
+                            {event.attendeesCount === 0 ? (
+                                <span className="text-white/60 text-sm">No one has registered yet</span>
+                            ) : (
+                                <span className="text-white/60 text-sm">
+                                    {event.attendeesCount} {event.attendeesCount === 1 ? 'person' : 'people'} registered
+                                </span>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -130,7 +202,7 @@ const EventDetails = ({ event, preview = false }: { event: Event, preview?: bool
                                 </div>
                                 <div className="flex flex-col">
                                     <span className="text-white/60 text-sm">Date</span>
-                                    <span className="text-white font-medium">{event.date}</span>
+                                    <span className="text-white font-medium">{formatDate(event.date)}</span>
                                 </div>
                             </div>
 
@@ -140,7 +212,9 @@ const EventDetails = ({ event, preview = false }: { event: Event, preview?: bool
                                 </div>
                                 <div className="flex flex-col">
                                     <span className="text-white/60 text-sm">Time</span>
-                                    <span className="text-white font-medium">{event.start_time} - {event.end_time}</span>
+                                    <span className="text-white font-medium">
+                                        {formatTime(event.start_time)} - {formatTime(event.end_time)}
+                                    </span>
                                 </div>
                             </div>
 
@@ -160,56 +234,167 @@ const EventDetails = ({ event, preview = false }: { event: Event, preview?: bool
                                 </div>
                                 <div className="flex flex-col">
                                     <span className="text-white/60 text-sm">Price</span>
-                                    <span className="text-white font-medium text-xl">Free</span>
+                                    <span className="text-white font-medium text-xl">{Number(event.price) == 0 ? "Free" : event.price}</span>
+                                </div>
+                            </div>
+
+                            <div className="flex items-start gap-4">
+                                <div className="p-3 rounded-xl bg-white/5 border border-white/10">
+                                    <Users className="w-5 h-5 text-white" />
+                                </div>
+                                <div className="flex flex-col">
+                                    <span className="text-white/60 text-sm">Capacity</span>
+                                    <span className="text-white font-medium">
+                                        {event.attendeesCount || 0} / {event.maxAttendees || 0}
+                                    </span>
                                 </div>
                             </div>
                         </div>
 
                         <div className="border-t border-white/10 my-2"></div>
+
+                        {/* Show different buttons based on user role */}
                         <div className="flex flex-col gap-4">
-                            <Button
-                                onClick={() => setIsRegistrationModalOpen(true)}
-                                className="w-full rounded-full py-6 text-lg font-semibold bg-white text-black hover:bg-gray-200 active:scale-95 transition-all hover:scale-105 cursor-pointer"
-                            >
-                                Register Now
-                            </Button>
-                            <Button
-                                onClick={() => setIsCheckInModalOpen(true)}
-                                disabled={preview}
-                                className="w-full rounded-full py-6 text-lg font-semibold bg-green-700 text-white hover:bg-green-500 active:scale-95 transition-all hover:scale-105 cursor-pointer"
-                            >
-                                Checkin
-                            </Button>
+                            {!currentAccount && (
+                                <>
+                                    <p className="text-center text-sm text-white/70">
+                                        Please connect your wallet to register for this event.
+                                    </p>
+                                </>
+                            )}
+
+                            {/* Buttons for regular users (non-organizers) */}
+                            {currentAccount && !isOrganizer && (
+                                <>
+                                    {/* Registration Button */}
+                                    {!isRegistered && !hasEventEnded && (
+                                        <Button
+                                            onClick={() => setIsRegistrationModalOpen(true)}
+                                            disabled={isEventFull || preview}
+                                            className="w-full rounded-full py-6 text-lg font-semibold bg-white text-black hover:bg-gray-200 active:scale-95 transition-all hover:scale-105 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                                        >
+                                            {isEventFull ? 'Event Full' : 'Register Now'}
+                                        </Button>
+                                    )}
+
+                                    {/* Already Registered Message */}
+                                    {isRegistered && (
+                                        <div className="w-full rounded-full py-3 text-lg font-semibold bg-green-600/10 text-green-400 border border-green-500/50 text-center">
+                                            ✓ You&apos;re Registered
+                                        </div>
+                                    )}
+
+                                    {/* Check-in Button */}
+                                    {(isRegistered && !hasEventEnded && event.allowCheckin) ? (
+                                        <Button
+                                            onClick={() => setIsCheckInModalOpen(true)}
+                                            disabled={preview}
+                                            className="w-full rounded-full py-6 text-lg font-semibold bg-green-700 text-white hover:bg-green-600 active:scale-95 transition-all hover:scale-105 cursor-pointer"
+                                        >
+                                            Check In
+                                        </Button>
+                                    ) : (!hasEventEnded && event.allowCheckin) ? <p className="text-center">Attendees are not allowed to check-in yet</p> : <p className="text-center">Event has ended</p>}
+
+                                    {/* Mint NFT Button (if event has ended and user is registered) */}
+                                    {(isRegistered && isAttended && hasEventEnded) && (
+                                        <Button
+                                            onClick={() => setIsCreateNFTModalOpen(true)}
+                                            disabled={preview}
+                                            className="w-full rounded-full py-6 text-lg font-semibold bg-purple-700 text-white hover:bg-purple-600 active:scale-95 transition-all hover:scale-105 cursor-pointer"
+                                        >
+                                            Mint Attendance NFT
+                                        </Button>
+                                    )}
+                                </>
+                            )}
                         </div>
 
-                        <p className="text-center text-white/40 text-xs">
-                            Limited spots available. Registration closes soon.
-                        </p>
+                        {event.attendeesCount! < event.maxAttendees! && !hasEventEnded && (
+                            <p className="text-center text-white/40 text-xs">
+                                {event.maxAttendees! - event.attendeesCount!} spots remaining
+                            </p>
+                        )}
                     </div>
-                    {!preview && <div className="p-6 rounded-3xl bg-white/5 backdrop-blur-xl border border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.36)] flex flex-col gap-6">
-                        <h2 className="text-xl font-bold text-white pb-3 border-b border-white/10">Organizers Settings</h2>
-                        <div className="flex flex-col gap-3">
-                            <Button
-                                // onClick={() => setIsRegistrationModalOpen(true)}
-                                className="w-full rounded-full py-6 text-lg font-semibold bg-white text-black hover:bg-gray-200 active:scale-95 transition-all hover:scale-105 cursor-pointer"
-                            >
-                                Edit event Details
-                            </Button>
-                            <Button
-                                className="w-full rounded-full py-6 text-lg font-semibold bg-white text-black hover:bg-gray-200 active:scale-95 transition-all hover:scale-105 cursor-pointer"
-                            >
-                                Create Attendee NFT
-                            </Button>
-                            <Link
-                                href={`/events/${event.id}/registrations`}
-                                className="w-full rounded-full py-2 text-lg font-semibold bg-transparent border border-white/20 text-white hover:bg-white/10 active:scale-95 transition-all hover:scale-105 cursor-pointer flex justify-center items-center"
-                            >
-                                View Registrations
-                            </Link>
+
+                    {/* Organizer Settings - Only visible to organizers */}
+                    {!preview && currentAccount && isOrganizer && (
+                        <div className="p-6 rounded-3xl bg-white/5 backdrop-blur-xl border border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.36)] flex flex-col gap-6">
+                            <div className="flex items-center gap-3 pb-3 border-b border-white/10">
+                                <Settings className="w-5 h-5 text-white/80" />
+                                <h2 className="text-xl font-bold text-white">Organizer Settings</h2>
+                            </div>
+
+                            <div className="grid grid-cols-1 gap-3">
+                                <Button
+                                    className="w-full rounded-xl py-6 text-base font-medium bg-white/10 text-white border border-white/10 hover:bg-white/20 hover:border-white/30 transition-all cursor-pointer justify-start px-4"
+                                    disabled={hasEventEnded}
+                                >
+                                    <Edit className="w-4 h-4 mr-3 text-blue-400" />
+                                    Edit Event Details
+                                </Button>
+
+                                <Link
+                                    href={`/events/${event.id}/registrations`}
+                                    className="w-full rounded-xl py-3 text-base font-medium bg-white/10 text-white border border-white/10 hover:bg-white/20 hover:border-white/30 transition-all cursor-pointer flex items-center justify-start px-4"
+                                >
+                                    <Users className="w-4 h-4 mr-3 text-green-400" />
+                                    View Registrations ({event.attendeesCount || 0})
+                                </Link>
+
+                                <Button
+                                    className="w-full rounded-xl py-6 text-base font-medium bg-white/10 text-white border border-white/10 hover:bg-white/20 hover:border-white/30 transition-all cursor-pointer justify-start px-4"
+                                    onClick={() => setIsCreateNFTModalOpen(true)}
+                                >
+                                    <ImageIcon className="w-4 h-4 mr-3 text-purple-400" />
+                                    Setup Attendance NFT
+                                </Button>
+
+                                <Button
+                                    className="w-full rounded-xl py-6 text-base font-medium bg-white/10 text-white border border-white/10 hover:bg-white/20 hover:border-white/30 transition-all cursor-pointer justify-start px-4"
+                                    onClick={() => setIsGeneratedQrModalOpen(true)}
+                                >
+                                    <QrCode className="w-4 h-4 mr-3 text-yellow-400" />
+                                    Check-in QR Code
+                                </Button>
+
+                                <p className="pb-4 border-b border-white/10">Checkin Settings</p>
+                                <Button
+                                    disabled={hasEventEnded}
+                                    className="w-full rounded-xl py-6 text-base font-medium bg-white/10 text-white border border-white/10 hover:bg-white/20 hover:border-white/30 transition-all cursor-pointer justify-start px-4"
+                                    onClick={() => setIsCheckInModalOpen(true)}
+                                >
+                                    <Users className="w-4 h-4 mr-3 text-green-400" />
+                                    Manual Check-in
+                                </Button>
+                                <Button
+
+                                    className={`w-full py-6 text-base font-medium text-center rounded-full ${event.allowCheckin ? "bg-red-600 text-white hover:bg-red-400" : "bg-green-600 text-white hover:bg-green-400"} transition-all cursor-pointer justify-center px-4 ${isToggling ? "opacity-50 cursor-not-allowed" : ""}`}
+                                    onClick={async () => {
+                                        try {
+                                            await toggleAllowCheckin(event.id)
+                                            setActionEffect({ open: true, title: event.allowCheckin ? "Disabled Checkin Successfully" : "Allowed Checkin Successfully", description: "Checkin allowance has been edited. This may Affect users action", type: "success", })
+                                        } catch (error) {
+                                            console.log(error)
+                                            setActionEffect({ open: true, title: "An error occurred", description: "An error occurred while trying to toggle event checkin", type: "error" })
+                                        }
+                                    }}
+                                    disabled={isToggling || hasEventEnded}
+                                >
+                                    {isToggling ? "Allowing user CheckIn..." : event.allowCheckin ? "Disallow user CheckIn" : "Allow user CheckIn"}
+
+                                    {/* display a switch */}
+                                    {/* <Switch
+                                        checked={event.allowCheckin}
+                                    // onCheckedChange={setAllowUserCheckIn}
+                                    /> */}
+                                </Button>
+                            </div>
                         </div>
-                    </div>}
+                    )}
                 </div>
             </div>
+
+            {/* Modals */}
             <CheckInModal
                 title={event.title}
                 open={isCheckInModalOpen}
@@ -218,8 +403,22 @@ const EventDetails = ({ event, preview = false }: { event: Event, preview?: bool
             <RegistrationModal
                 event={event}
                 isOpen={isRegistrationModalOpen}
-                onClose={() => setIsRegistrationModalOpen(false)}
+                setIsOpen={setIsRegistrationModalOpen}
             />
+            <CreateNFTModal
+                eventTitle={event.title}
+                eventId={event.id}
+                onSuccess={() => setIsCreateNFTModalOpen(false)}
+                isOpen={isCreateNFTModalOpen}
+                setOpen={setIsCreateNFTModalOpen}
+            />
+            <GeneratedQrModal
+                title={event.title}
+                open={isGeneratedQrModalOpen}
+                setOpen={setIsGeneratedQrModalOpen}
+                eventId={event.id}
+            />
+            <StatusModal isOpen={actionEffect.open} onClose={() => setActionEffect((prev) => ({ ...prev, open: false }))} type={actionEffect.type} title={actionEffect.title} description={actionEffect.description} />
         </div>
     )
 }

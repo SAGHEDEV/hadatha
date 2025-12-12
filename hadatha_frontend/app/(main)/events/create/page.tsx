@@ -8,12 +8,21 @@ import { CreateEventForm } from "@/components/events/create/CreateEventForm"
 import { EventPreview } from "@/components/events/create/EventPreview"
 import { Button } from "@/components/ui/button"
 import { Eye, Edit3, Save } from "lucide-react"
+import LaunchAppBtn from "@/components/miscellneous/LaunchAppBtn"
+import { useCurrentAccount } from "@mysten/dapp-kit"
+import { usePathname } from "next/navigation"
+import { useCreateEvent } from "@/hooks/sui/useCreateEvent"
+import { useUploadToWalrus } from "@/hooks/useUploadToWalrus"
+import { useGetDerivedAddress } from "@/hooks/sui/useCheckAccountExistence"
+import { useState } from "react"
+import StatusModal from "@/components/miscellneous/StatusModal"
 
 const eventSchema = z.object({
     title: z.string().min(2, "Title must be at least 2 characters"),
     description: z.string().min(10, "Description must be at least 10 characters"),
-    image: z.string().optional(),
-    organizer: z.array(z.string()).min(1, "Please select at least one organizer"),
+    image: z.any().optional(),
+    imagePreviewUrl: z.string().optional(),
+    organizer: z.array(z.string()).optional(),
     tags: z.array(z.string()).optional(),
     location: z.string().min(2, "Location is required"),
     date: z.date({ error: "Date is required" }),
@@ -31,6 +40,8 @@ const eventSchema = z.object({
 })
 
 export default function CreateEventPage() {
+    const currentAccount = useCurrentAccount()
+    const pathname = usePathname()
     const methods = useForm<z.infer<typeof eventSchema>>({
         resolver: zodResolver(eventSchema),
         defaultValues: {
@@ -40,11 +51,86 @@ export default function CreateEventPage() {
             tags: [],
         },
     })
+    const { uploadToWalrus, isUploading } = useUploadToWalrus();
+    const { createEvent, isCreating } = useCreateEvent()
+    const derivedAddress = useGetDerivedAddress(currentAccount?.address);
+    const [openEffectModal, setOpenEffectModal] = useState({ open: false, title: "", message: "", type: "success" as "success" | "error" })
 
-    const onSubmit = (data: z.infer<typeof eventSchema>) => {
+
+
+    const onSubmit = async (data: z.infer<typeof eventSchema>) => {
         console.log("Form Data:", data)
-        // Here we would typically send data to backend
-        alert("Event Created! Check console for data.")
+
+        if (!derivedAddress) {
+            alert("Account not found. Please connect your wallet.");
+            return;
+        }
+
+        let image_url = ""
+        if (data.image instanceof File) {
+            try {
+                const blobUrl = await uploadToWalrus(data.image)
+                console.log(blobUrl)
+                image_url = blobUrl
+            } catch (err) {
+                throw new Error("Failed to upload image to Walrus", { cause: err })
+            }
+        }
+
+        try {
+            // Combine date and time to get milliseconds
+            const startDateTime = new Date(data.date);
+            const [startHour, startMinute] = data.startTime.split(':');
+            startDateTime.setHours(parseInt(startHour), parseInt(startMinute));
+
+            const endDateTime = new Date(data.date);
+            const [endHour, endMinute] = data.endTime.split(':');
+            endDateTime.setHours(parseInt(endHour), parseInt(endMinute));
+
+            // Extract registration field names and types
+            const registrationFieldNames = data.registrationFields?.map(field => field.label) || [];
+            const registrationFieldTypes = data.registrationFields?.map(field => field.type) || [];
+
+            console.log(registrationFieldNames)
+            console.log(registrationFieldTypes)
+
+            await createEvent({
+                account: derivedAddress,
+                title: data.title,
+                description: data.description,
+                location: data.location,
+                startTime: startDateTime.getTime(),
+                endTime: endDateTime.getTime(),
+                imageUrl: image_url,
+                registrationFieldNames,
+                registrationFieldTypes,
+                maxAttendees: data.maxAttendees,
+                tags: data.tags || [],
+                price: data.ticketType === "free" ? "0" : "0", // Default to 0 for now as paid is disabled
+            });
+
+            setOpenEffectModal({ open: true, title: "Event Created Successfully!", message: "Event Created Successfully!", type: "success" })
+            methods.reset();
+        } catch (error) {
+            console.error("Failed to create event:", error);
+            setOpenEffectModal({ open: true, title: "Failed to create event", message: "Failed to create event. See console for details.", type: "error" })
+        }
+    }
+
+    if (!currentAccount) {
+        return (
+            <div className="flex flex-col items-center justify-center gap-6 fixed w-screen h-screen top-0 left-0">
+                <div className="rounded-3xl border border-white/10 bg-white/5 p-12 backdrop-blur-xl text-center">
+                    <div className="flex flex-col items-center gap-4 mb-4">
+                        <h1 className="text-2xl font-bold text-white">Connect Wallet</h1>
+                        <p className="text-white/60 max-w-md">
+                            You need to connect your wallet to access this page.
+                        </p>
+                    </div>
+                    <LaunchAppBtn buttonText="Connect Wallet" redirectUrl={pathname} />
+                </div>
+            </div>
+        )
     }
 
     return (
@@ -57,9 +143,10 @@ export default function CreateEventPage() {
                 <Button
                     onClick={methods.handleSubmit(onSubmit)}
                     className="rounded-full bg-white text-black px-10! py-6! cursor-pointer flex items-center justify-center gap-2 font-semibold hover:bg-gray-200 hover:scale-105 active:scale-95 transition-all duration-300"
+                    disabled={isCreating || isUploading}
                 >
                     <Save className="w-6 h-6 mr-2" />
-                    Publish Event
+                    {isCreating || isUploading ? "Creating..." : "Publish Event"}
                 </Button>
             </div>
 
@@ -85,7 +172,7 @@ export default function CreateEventPage() {
                     </div>
 
                     <TabsContent value="create" className="focus-visible:outline-none animate-in fade-in slide-in-from-bottom-4 duration-500">
-                        <CreateEventForm />
+                        <CreateEventForm isLoading={isCreating || isUploading} />
                     </TabsContent>
 
                     <TabsContent value="preview" className="focus-visible:outline-none animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -93,6 +180,7 @@ export default function CreateEventPage() {
                     </TabsContent>
                 </Tabs>
             </FormProvider>
+            <StatusModal isOpen={openEffectModal.open} title={openEffectModal.title} description={openEffectModal.message} type={openEffectModal.type} onClose={() => setOpenEffectModal({ open: false, title: "", message: "", type: "success" })} />
         </div>
     )
 }

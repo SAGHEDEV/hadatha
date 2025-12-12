@@ -23,7 +23,7 @@ type FormValues = {
     }[]
 }
 
-export function CustomFieldsBuilder() {
+export function CustomFieldsBuilder({ disabled }: { disabled?: boolean }) {
     const { control, register, watch } = useFormContext<FormValues>()
     const { fields, append, remove } = useFieldArray({
         control,
@@ -40,6 +40,7 @@ export function CustomFieldsBuilder() {
                     type="button"
                     variant="outline"
                     size="sm"
+                    disabled={disabled}
                     onClick={() => append({ label: "", type: "text", options: "" })}
                     className="bg-white/10 border-white/20 hover:bg-white/20 text-white h-12 cursor-pointer hover:text-white"
                 >
@@ -57,6 +58,7 @@ export function CustomFieldsBuilder() {
                                 <div className="flex-1 space-y-2">
                                     <Label>Field Label</Label>
                                     <Input
+                                        disabled={disabled}
                                         {...register(`registrationFields.${index}.label` as const)}
                                         placeholder="e.g., T-Shirt Size"
                                         className="bg-black/20 border-white/10 text-white placeholder:text-white/40 focus:border-white/30 h-12"
@@ -65,6 +67,7 @@ export function CustomFieldsBuilder() {
                                 <div className="w-1/3 space-y-2">
                                     <Label>Type</Label>
                                     <Select
+                                        disabled={disabled}
                                         onValueChange={(value) => {
                                             const event = { target: { value, name: `registrationFields.${index}.type` } }
                                             register(`registrationFields.${index}.type`).onChange(event)
@@ -90,6 +93,7 @@ export function CustomFieldsBuilder() {
                                     type="button"
                                     variant="ghost"
                                     size="icon"
+                                    disabled={disabled}
                                     onClick={() => remove(index)}
                                     className="mt-8 text-white/60 hover:text-red-400 hover:bg-white/5"
                                 >
@@ -102,6 +106,7 @@ export function CustomFieldsBuilder() {
                                 <div className="space-y-2">
                                     <Label>Options (comma separated)</Label>
                                     <Input
+                                        disabled={disabled}
                                         {...register(`registrationFields.${index}.options` as const)}
                                         placeholder="e.g., Small, Medium, Large"
                                         className="bg-black/20 border-white/10 text-white placeholder:text-white/40 focus:border-white/30"

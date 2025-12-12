@@ -4,6 +4,9 @@ module hadatha_contract::hadatha_contract {
     use sui::event;
     use std::string::{Self, String};
     use sui::derived_object;
+    use sui::url::{Self, Url};
+    use sui::display;
+    use sui::package;
 
     // ====== Error Codes ======
     const EEventNotFound: u64 = 0;
@@ -17,6 +20,10 @@ module hadatha_contract::hadatha_contract {
     const EInvalidEventStatus: u64 = 8;
     const EAccountAlreadyExists: u64 = 9;
     const EAccountExists: u64 = 10;
+    const ENotCheckedIn: u64 = 11;
+    const EAlreadyMintedNFT: u64 = 12;
+    const ENFTNotEnabled: u64 = 13;
+    const EEventNotEnded: u64 = 14;
 
     // ====== Events ======
     public struct EventCreated has copy, drop {
@@ -51,6 +58,22 @@ module hadatha_contract::hadatha_contract {
         name: vector<u8>,
     }
 
+    public struct AttendanceNFTMinted has copy, drop {
+        nft_id: ID,
+        event_id: ID,
+        attendee: address,
+        timestamp: u64,
+    }
+
+    public struct NFTCollectionEnabled has copy, drop {
+        event_id: ID,
+        enabled_by: address,
+        timestamp: u64,
+    }
+
+    // ====== One-Time Witness ======
+    public struct HADATHA_CONTRACT has drop {}
+
     // ====== Structs ======
     public struct AccountRoot has key {
         id: UID,
@@ -60,6 +83,7 @@ module hadatha_contract::hadatha_contract {
         id: UID,
         name: vector<u8>,
         email: vector<u8>,
+        image_url: vector<u8>,
         total_attended: u64,
         total_organized: u64,
         total_hosted: u64,
@@ -71,16 +95,34 @@ module hadatha_contract::hadatha_contract {
         field_type: vector<u8>,
     }
 
-    // public struct ValuePair has copy, drop, store {
-    //     key: vector<u8>,
-    //     value: vector<u8>,
-    // }
-
     public struct RegistrationDetails has copy, drop, store {
         values: vector<vector<u8>>,
         checked_in: bool,
         checked_in_at: u64,
         registered_at: u64,
+        nft_minted: bool,
+    }
+
+    // NFT Configuration for each event
+    public struct NFTConfig has store {
+        enabled: bool,
+        nft_name: vector<u8>,
+        nft_description: vector<u8>,
+        nft_image_url: vector<u8>,
+        total_minted: u64,
+    }
+
+    // The Attendance NFT
+    public struct AttendanceNFT has key, store {
+        id: UID,
+        event_id: ID,
+        event_title: vector<u8>,
+        attendee_name: vector<u8>,
+        attendee_address: address,
+        check_in_time: u64,
+        mint_time: u64,
+        image_url: Url,
+        description: String,
     }
 
     public struct Event has key, store {
@@ -103,6 +145,7 @@ module hadatha_contract::hadatha_contract {
         allow_checkin: bool,
         price: vector<u8>,
         status: vector<u8>, // "ongoing", "closed", "hidden", "past"
+        nft_config: NFTConfig,
     }
 
     public struct EventRegistry has key {
@@ -111,7 +154,7 @@ module hadatha_contract::hadatha_contract {
     }
 
     // ====== Init Function ======
-    fun init(ctx: &mut TxContext) {
+    fun init(otw: HADATHA_CONTRACT, ctx: &mut TxContext) {
         // Initialize EventRegistry
         let registry = EventRegistry {
             id: object::new(ctx),
@@ -124,6 +167,36 @@ module hadatha_contract::hadatha_contract {
             id: object::new(ctx),
         };
         transfer::share_object(account_root);
+
+        // Create and setup Display for AttendanceNFT
+        let publisher = package::claim(otw, ctx);
+        let mut display = display::new<AttendanceNFT>(&publisher, ctx);
+        
+        display.add(
+            b"name".to_string(),
+            b"{event_title} - Attendance NFT".to_string()
+        );
+        display.add(
+            b"description".to_string(),
+            b"{description}".to_string()
+        );
+        display.add(
+            b"image_url".to_string(),
+            b"{image_url}".to_string()
+        );
+        display.add(
+            b"attendee".to_string(),
+            b"{attendee_name}".to_string()
+        );
+        display.add(
+            b"project_url".to_string(),
+            b"https://hadatha.app".to_string()
+        );
+        
+        display.update_version();
+        
+        transfer::public_transfer(publisher, ctx.sender());
+        transfer::public_transfer(display, ctx.sender());
     }
 
     // ====== Account Functions ======
@@ -133,17 +206,19 @@ module hadatha_contract::hadatha_contract {
         account_root: &mut AccountRoot,
         name: vector<u8>,
         email: vector<u8>,
+        image_url: vector<u8>,
         ctx: &mut TxContext
     ) {
-         let sender = ctx.sender();
+        let sender = ctx.sender();
         assert!(
-        !derived_object::exists(&account_root.id, sender),
-        EAccountExists
+            !derived_object::exists(&account_root.id, sender),
+            EAccountExists
         );
         let account = Account {
             id: derived_object::claim(&mut account_root.id, sender),
             name,
             email,
+            image_url,
             total_attended: 0,
             total_organized: 0,
             total_hosted: 0,
@@ -166,10 +241,12 @@ module hadatha_contract::hadatha_contract {
         account: &mut Account,
         name: vector<u8>,
         email: vector<u8>,
+        image_url: vector<u8>,
         _ctx: &mut TxContext
     ) {
         account.name = name;
         account.email = email;
+        account.image_url = image_url;
     }
 
     // ====== Event Functions ======
@@ -225,12 +302,19 @@ module hadatha_contract::hadatha_contract {
             checked_in_count: 0,
             created_at: current_time,
             updated_at: current_time,
-            registration_fields : fields,
+            registration_fields: fields,
             max_attendees,
             tags,
             allow_checkin: false,
             price,
             status: b"ongoing",
+            nft_config: NFTConfig {
+                enabled: false,
+                nft_name: vector::empty(),
+                nft_description: vector::empty(),
+                nft_image_url: vector::empty(),
+                total_minted: 0,
+            },
         };
 
         let event_id = object::id(&event);
@@ -250,6 +334,212 @@ module hadatha_contract::hadatha_contract {
 
         transfer::share_object(event);
     }
+
+    /// Enable NFT minting for an event (only organizers)
+    public entry fun enable_nft_collection(
+        event: &mut Event,
+        nft_name: vector<u8>,
+        nft_description: vector<u8>,
+        nft_image_url: vector<u8>,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        let sender = tx_context::sender(ctx);
+        let current_time = clock::timestamp_ms(clock);
+
+        // Check if sender is an organizer
+        assert!(vector::contains(&event.organizers, &sender), ENotOrganizer);
+
+        event.nft_config.enabled = true;
+        event.nft_config.nft_name = nft_name;
+        event.nft_config.nft_description = nft_description;
+        event.nft_config.nft_image_url = nft_image_url;
+        event.updated_at = current_time;
+
+        event::emit(NFTCollectionEnabled {
+            event_id: object::id(event),
+            enabled_by: sender,
+            timestamp: current_time,
+        });
+    }
+
+    /// Update NFT collection details (only organizers)
+    public entry fun update_nft_collection(
+        event: &mut Event,
+        nft_name: vector<u8>,
+        nft_description: vector<u8>,
+        nft_image_url: vector<u8>,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        let sender = tx_context::sender(ctx);
+        let current_time = clock::timestamp_ms(clock);
+
+        // Check if sender is an organizer
+        assert!(vector::contains(&event.organizers, &sender), ENotOrganizer);
+
+        event.nft_config.nft_name = nft_name;
+        event.nft_config.nft_description = nft_description;
+        event.nft_config.nft_image_url = nft_image_url;
+        event.updated_at = current_time;
+    }
+
+    /// Disable NFT minting (only organizers)
+    public entry fun disable_nft_collection(
+        event: &mut Event,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        let sender = tx_context::sender(ctx);
+        let current_time = clock::timestamp_ms(clock);
+
+        // Check if sender is an organizer
+        assert!(vector::contains(&event.organizers, &sender), ENotOrganizer);
+
+        event.nft_config.enabled = false;
+        event.updated_at = current_time;
+    }
+
+    /// Mint attendance NFT (only for checked-in attendees)
+  public entry fun mint_attendance_nft(
+    event: &mut Event,
+    account: &Account,
+    clock: &Clock,
+    ctx: &mut TxContext
+) {
+    let sender = tx_context::sender(ctx);
+    let current_time = clock::timestamp_ms(clock);
+
+    // Check if NFT minting is enabled
+    assert!(event.nft_config.enabled, ENFTNotEnabled);
+
+    // Check if attendee is registered
+    assert!(table::contains(&event.attendees, sender), ENotRegistered);
+
+    //
+    // ---- PRE-EXTRACT ALL EVENT FIELDS BEFORE MUT BORROW ----
+    //
+    let event_id_copy = object::id(event);
+    let event_title_copy = event.title;
+    let nft_img_copy = event.nft_config.nft_image_url;
+    let nft_desc_copy = event.nft_config.nft_description;
+
+    {
+        let registration = table::borrow_mut(&mut event.attendees, sender);
+
+        // Check if attendee has checked in
+        assert!(registration.checked_in, ENotCheckedIn);
+
+        // Check if NFT already minted
+        assert!(!registration.nft_minted, EAlreadyMintedNFT);
+
+        // Build the NFT *without touching `event` again*
+        let nft = AttendanceNFT {
+            id: object::new(ctx),
+            event_id: event_id_copy,
+            event_title: event_title_copy,
+            attendee_name: account.name,
+            attendee_address: sender,
+            check_in_time: registration.checked_in_at,
+            mint_time: current_time,
+            image_url: url::new_unsafe_from_bytes(nft_img_copy),
+            description: string::utf8(nft_desc_copy),
+        };
+
+        let nft_id = object::id(&nft);
+
+        // Update attendee record
+        registration.nft_minted = true;
+
+        // Update event metadata (still allowed because we're still inside the borrow)
+        event.nft_config.total_minted = event.nft_config.total_minted + 1;
+
+        // ---- End mutable borrow after this block ----
+
+        // Emit event (now allowed)
+        event::emit(AttendanceNFTMinted {
+            nft_id,
+            event_id: event_id_copy,
+            attendee: sender,
+            timestamp: current_time,
+        });
+
+        // Transfer NFT to user
+        transfer::public_transfer(nft, sender);
+    }
+}
+
+
+    /// Admin mint NFT for attendee (only organizers)
+  public entry fun admin_mint_nft_for_attendee(
+    event: &mut Event,
+    attendee: address,
+    attendee_account: &Account,
+    clock: &Clock,
+    ctx: &mut TxContext
+) {
+    let sender = tx_context::sender(ctx);
+    let current_time = clock::timestamp_ms(clock);
+
+    // Check if sender is an organizer
+    assert!(vector::contains(&event.organizers, &sender), ENotOrganizer);
+
+    // Check if NFT minting is enabled
+    assert!(event.nft_config.enabled, ENFTNotEnabled);
+
+    // Check if attendee is registered
+    assert!(table::contains(&event.attendees, attendee), ENotRegistered);
+
+    // PRE-EXTRACT EVERYTHING YOU NEED FROM `event` BEFORE BORROWING MUTABLY
+    let event_id_copy = object::id(event);
+    let event_title_copy = event.title;
+    let nft_image_url_copy = event.nft_config.nft_image_url;
+    let nft_description_copy = event.nft_config.nft_description;
+
+    // Now borrow mutably
+    {
+        let registration = table::borrow_mut(&mut event.attendees, attendee);
+
+        // Check if attendee has checked in
+        assert!(registration.checked_in, ENotCheckedIn);
+
+        // Check if NFT already minted
+        assert!(!registration.nft_minted, EAlreadyMintedNFT);
+
+        // Prepare the NFT (note: avoid using `event` here!)
+        let nft = AttendanceNFT {
+            id: object::new(ctx),
+            event_id: event_id_copy,
+            event_title: event_title_copy,
+            attendee_name: attendee_account.name,
+            attendee_address: attendee,
+            check_in_time: registration.checked_in_at,
+            mint_time: current_time,
+            image_url: url::new_unsafe_from_bytes(nft_image_url_copy),
+            description: string::utf8(nft_description_copy),
+        };
+
+        let nft_id = object::id(&nft);
+
+        // Mark as minted
+        registration.nft_minted = true;
+
+        // Increment total minted
+        event.nft_config.total_minted = event.nft_config.total_minted + 1;
+
+        // Emit event — safe because the mutable borrow ends after this block
+        event::emit(AttendanceNFTMinted {
+            nft_id,
+            event_id: event_id_copy,
+            attendee,
+            timestamp: current_time,
+        });
+
+        // Transfer NFT
+        transfer::public_transfer(nft, attendee);
+    }
+}
+
 
     /// Register for an event
     public entry fun register_for_event(
@@ -277,6 +567,7 @@ module hadatha_contract::hadatha_contract {
             checked_in: false,
             checked_in_at: 0,
             registered_at: current_time,
+            nft_minted: false,
         };
 
         table::add(&mut event.attendees, sender, registration);
@@ -509,6 +800,11 @@ module hadatha_contract::hadatha_contract {
         )
     }
 
+    /// Get NFT config
+    public fun get_nft_config(event: &Event): (bool, u64) {
+        (event.nft_config.enabled, event.nft_config.total_minted)
+    }
+
     /// Check if address is registered
     public fun is_registered(event: &Event, attendee: address): bool {
         table::contains(&event.attendees, attendee)
@@ -523,6 +819,15 @@ module hadatha_contract::hadatha_contract {
         registration.checked_in
     }
 
+    /// Check if NFT has been minted
+    public fun has_minted_nft(event: &Event, attendee: address): bool {
+        if (!table::contains(&event.attendees, attendee)) {
+            return false
+        };
+        let registration = table::borrow(&event.attendees, attendee);
+        registration.nft_minted
+    }
+
     /// Get account info
     public fun get_account_stats(account: &Account): (u64, u64, u64, u64) {
         (
@@ -535,6 +840,6 @@ module hadatha_contract::hadatha_contract {
 
     #[test_only]
     public fun init_for_testing(ctx: &mut TxContext) {
-        init(ctx);
+        init(HADATHA_CONTRACT {}, ctx);
     }
 }

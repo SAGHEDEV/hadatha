@@ -3,22 +3,25 @@
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import Logo from "./Logo"
-import { ConnectButton, useCurrentAccount, useDisconnectWallet } from "@mysten/dapp-kit"
-import { Wallet, User, LogOut } from "lucide-react"
+import { useCurrentAccount, useDisconnectWallet } from "@mysten/dapp-kit"
+import { User, LogOut } from "lucide-react"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Button } from "@/components/ui/button"
 import Image from "next/image"
+import { useCheckAccountExistence } from "@/hooks/sui/useCheckAccountExistence"
+import LaunchAppBtn from "./LaunchAppBtn"
 
 const Header = () => {
     const pathname = usePathname()
     const router = useRouter()
-    const account = useCurrentAccount()
+    const currentAccount = useCurrentAccount()
     const { mutate: disconnect } = useDisconnectWallet()
+    const { account } = useCheckAccountExistence()
 
     const navLinks = [
-        { name: "Dashboard", href: "/dashboard" },
-        { name: "Events", href: "/events" },
-        { name: "Create Event", href: "/events/create" },
+        { name: "Dashboard", href: "/dashboard", disabled: !currentAccount },
+        { name: "Events", href: "/events", disabled: false },
+        { name: "Create Event", href: "/events/create", disabled: !currentAccount },
     ]
 
     const handleDisconnect = () => {
@@ -33,17 +36,18 @@ const Header = () => {
     return (
         <header className="fixed top-0 left-0 right-0 z-40 px-6! py-4!">
             <div className="max-w-7xl mx-auto rounded-full bg-white/5 backdrop-blur-xl border border-white/10 px-6 py-3 flex items-center justify-between shadow-[0_8px_32px_0_rgba(0,0,0,0.36)]">
-                <Link href="/dashboard">
-                    <Logo />
-                </Link>
+                {/* <Link href="/dashboard"> */}
+                <Logo />
+                {/* </Link> */}
 
                 <nav className="hidden md:flex items-center gap-8">
                     {navLinks.map((link) => (
                         <Link
                             key={link.name}
                             href={link.href}
+
                             className={`text-sm font-medium transition-colors hover:text-white ${pathname === link.href ? "text-white" : "text-white/60"
-                                }`}
+                                } ${link.disabled ? "text-white/60 cursor-not-allowed aria-disabled:*:true" : ""}`}
                         >
                             {link.name}
                         </Link>
@@ -51,13 +55,13 @@ const Header = () => {
                 </nav>
 
                 <div className="flex items-center gap-4">
-                    {account ? (
+                    {currentAccount ? (
                         <Popover>
                             <PopoverTrigger asChild>
                                 <button className="relative w-10 h-10 rounded-full overflow-hidden border border-white/20 hover:border-white/40 transition-all cursor-pointer">
                                     {/* Placeholder for Profile Image - using a generated avatar based on address for now */}
                                     <Image
-                                        src={`https://ui-avatars.com/api/?name=${account.address.slice(0, 2)}&background=random`}
+                                        src={account?.image_url ? account?.image_url : `https://ui-avatars.com/api/?name=${account?.name.slice(0, 2)}&background=random`}
                                         alt="Profile"
                                         fill
                                         className="object-cover"
@@ -69,15 +73,15 @@ const Header = () => {
                                     <div className="flex items-center gap-3 pb-4 border-b border-white/10">
                                         <div className="relative w-10 h-10 rounded-full overflow-hidden border border-white/20">
                                             <Image
-                                                src={`https://ui-avatars.com/api/?name=${account.address.slice(0, 2)}&background=random`}
+                                                src={(account?.image_url && account?.image_url !== "") ? account?.image_url : `https://ui-avatars.com/api/?name=${account?.name.slice(0, 2)}&background=random`}
                                                 alt="Profile"
                                                 fill
                                                 className="object-cover"
                                             />
                                         </div>
                                         <div className="flex flex-col overflow-hidden">
-                                            <span className="font-bold text-sm truncate">User</span>
-                                            <span className="text-xs text-white/50 truncate">{formatAddress(account.address)}</span>
+                                            <span className="font-bold text-sm truncate">{account?.name}</span>
+                                            <span className="text-xs text-white/50 truncate">{formatAddress(currentAccount?.address as string)}</span>
                                         </div>
                                     </div>
 
@@ -103,12 +107,7 @@ const Header = () => {
                             </PopoverContent>
                         </Popover>
                     ) : (
-                        <ConnectButton className="rounded-full! px-6! py-2! bg-white/10! hover:bg-white/20! text-white! border border-white/10! transition-all duration-300 font-sans!" connectText={
-                            <span className="flex items-center gap-2 text-sm">
-                                <Wallet className="w-4 h-4" />
-                                Connect
-                            </span>
-                        } />
+                        <LaunchAppBtn buttonText="Connect Wallet" redirectUrl="/" />
                     )}
                 </div>
             </div>

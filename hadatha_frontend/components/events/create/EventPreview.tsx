@@ -9,6 +9,8 @@ export function EventPreview() {
     const { watch } = useFormContext()
     const values = watch()
 
+    const imageUrl = values.imagePreviewUrl ?? (typeof values.image === "string" ? values.image : "")
+
     // Map form values to Event interface
     const eventPreviewData: Event = {
         id: "preview",
@@ -16,7 +18,7 @@ export function EventPreview() {
         description: values.description || "Event description will appear here...",
         location: values.location || "Location",
         date: values.date ? format(values.date, "PPP") : "Date",
-        imageUrl: values.image || "",
+        imageUrl: imageUrl,
         organizers: (values.organizer || []).map((org: string) => ({
             name: org === "abdul" ? "Abdul" : org, // Simple mapping for demo
             avatarUrl: "https://github.com/shadcn.png" // Placeholder

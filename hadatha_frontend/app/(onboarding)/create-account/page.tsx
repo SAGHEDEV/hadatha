@@ -5,14 +5,22 @@ import { Camera, Plus } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Image from "next/image"
 import Logo from "@/components/miscellneous/Logo"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
+import { useCheckAccountExistence } from "@/hooks/sui/useCheckAccountExistence"
+import LoadingState from "@/components/miscellneous/LoadingState"
+import { useCreateAccount } from "@/hooks/sui/useCreateAccount"
+import { useUploadToWalrus } from "@/hooks/useUploadToWalrus"
+import StatusModal from "@/components/miscellneous/StatusModal"
 
 const formSchema = z.object({
+    image_url: z
+        .any()
+        .optional(),
     fullName: z.string().min(4, "Full name must be at least 4 characters"),
-    email: z.string().email("Invalid email address"),
+    email: z.email("Invalid email address"),
 })
 
 type FormValues = z.infer<typeof formSchema>
@@ -20,6 +28,11 @@ type FormValues = z.infer<typeof formSchema>
 const CreateAccountPage = () => {
     const [imagePreview, setImagePreview] = useState<string | null>(null)
     const router = useRouter()
+    const { hasAccount, isLoading } = useCheckAccountExistence();
+    const { createAccount, isCreating } = useCreateAccount();
+    const { uploadToWalrus, isUploading } = useUploadToWalrus();
+    const [openEffectModal, setOpenEffectModal] = useState({ open: false, status: "success" as "success" | "error", message: "", description: "" })
+    const redirectUrl = useSearchParams().get("redirect")
 
     const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormValues>({
         resolver: zodResolver(formSchema),
@@ -27,9 +40,25 @@ const CreateAccountPage = () => {
 
     const onSubmit = async (data: FormValues) => {
         console.log(data)
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1000))
-        router.push("/dashboard")
+        let image_url = ""
+        if (data.image_url && data.image_url.length > 0) {
+            try {
+                const blobUrl = await uploadToWalrus(data.image_url[0])
+                console.log(blobUrl)
+                image_url = blobUrl
+            } catch (err) {
+                console.log(err)
+            }
+        }
+        await createAccount({
+            name: data.fullName,
+            email: data.email,
+            image_url: image_url
+        }).then(() => {
+            setOpenEffectModal({ open: true, status: "success", message: "Account created successfully", description: "You will be redirected to dashboard in a few seconds" })
+        }).catch((err) => {
+            setOpenEffectModal({ open: true, status: "error", message: "Failed to create account", description: err.message })
+        })
     }
 
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -41,6 +70,16 @@ const CreateAccountPage = () => {
             }
             reader.readAsDataURL(file)
         }
+    }
+
+    useEffect(() => {
+        if (hasAccount && !isLoading) {
+            router.push(redirectUrl || "/dashboard")
+        }
+    }, [hasAccount, isLoading])
+
+    if (isLoading && !hasAccount) {
+        return <LoadingState loadingText="Checking account status..." />
     }
 
     return (
@@ -69,7 +108,7 @@ const CreateAccountPage = () => {
                 <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-6">
                     {/* Profile Picture Upload */}
                     <div className="flex justify-center">
-                        <div className="relative group">
+                        <div className="relative group cursor-pointer">
                             <div className="w-28 h-28 rounded-full bg-white/5 border-2 border-white/10 flex items-center justify-center overflow-hidden transition-all duration-300 group-hover:border-white/30 group-hover:shadow-[0_0_20px_rgba(255,255,255,0.1)]">
                                 {imagePreview ? (
                                     <Image src={imagePreview} alt="Profile" width={112} height={112} className="w-full h-full object-cover" />
@@ -79,15 +118,20 @@ const CreateAccountPage = () => {
                             </div>
                             <label className="absolute inset-0 cursor-pointer">
                                 <input
+                                    {...register("image_url", {
+                                        onChange: (e) => handleImageChange(e)
+                                    })}
                                     type="file"
                                     accept="image/*"
-                                    className="hidden"
-                                    onChange={handleImageChange}
+                                    className="hidden cursor-pointer"
                                 />
                             </label>
-                            <div className="absolute bottom-1 right-1 w-8 h-8 bg-white backdrop-blur-xl rounded-full border border-white/20 flex items-center justify-center pointer-events-none">
-                                <Plus className="w-4 h-4 text-black" />
+                            <div className="relative flex justify-center items-center">
+                                <div className="absolute bottom-1 right-1 w-8 h-8 bg-white backdrop-blur-xl rounded-full border border-white/20 flex items-center justify-center pointer-events-none">
+                                    <Plus className="w-4 h-4 text-black" />
+                                </div>
                             </div>
+                            {errors.image_url && <span className="text-red-400 text-xs ml-2 animate-pulse">{errors?.image_url?.message as string}</span>}
                         </div>
                     </div>
 
@@ -121,13 +165,17 @@ const CreateAccountPage = () => {
 
                     <Button
                         type="submit"
-                        disabled={isSubmitting}
+                        disabled={isSubmitting || isUploading || isCreating}
                         className="cursor-pointer w-full mt-4 rounded-full py-7 text-lg font-semibold bg-white text-black hover:bg-gray-200 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        {isSubmitting ? "Creating..." : "Create Account"}
+                        {isSubmitting || isUploading || isCreating ? "Creating..." : "Create Account"}
                     </Button>
                 </form>
             </div>
+            <StatusModal isOpen={openEffectModal.open}
+                onClose={() => setOpenEffectModal({ open: false, status: "success", message: "", description: "" })}
+                type={openEffectModal.status} title={openEffectModal.message} description={openEffectModal.description} actionLabel="Close"
+                onAction={() => { setOpenEffectModal({ open: false, status: "success", message: "", description: "" }); router.push(redirectUrl ? "/dashboard?redirect=" + redirectUrl : "/dashboard") }} />
         </div>
     )
 }

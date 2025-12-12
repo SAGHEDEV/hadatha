@@ -1,21 +1,24 @@
 import Image from "next/image"
 import { Calendar, MapPin, Users } from "lucide-react"
 import Link from "next/link"
+import { formatDate } from "./EventDetails";
 
 interface EventCardProps {
-    id: number;
+    id: string;
     title: string
     date: string
     location: string
     imageUrl: string
-    attendeesCount: number
-    organizer: {
+    attendeesCount?: number
+    organizers: {
         name: string
         avatarUrl: string
-    }
+    }[]
 }
 
-const EventCard = ({ title, date, location, imageUrl, attendeesCount, organizer, id }: EventCardProps) => {
+const EventCard = ({ title, date, location, imageUrl, attendeesCount = 0, organizers, id }: EventCardProps) => {
+    const mainOrganizer = organizers?.[0] || { name: "Unknown", avatarUrl: "" };
+
     return (
         <div className="group relative rounded-3xl bg-white/5 backdrop-blur-md border border-white/10 overflow-hidden hover:bg-white/10 transition-all duration-300 flex flex-col h-full">
             {/* Image Section */}
@@ -39,7 +42,7 @@ const EventCard = ({ title, date, location, imageUrl, attendeesCount, organizer,
                 <div className="flex flex-col gap-2">
                     <div className="flex items-center gap-2 text-white/60 text-xs uppercase tracking-wider font-medium">
                         <Calendar className="w-3 h-3" />
-                        <span>{date}</span>
+                        <span>{formatDate(date)}</span>
                     </div>
                     <h3 className="text-xl font-bold text-white leading-tight group-hover:text-white/90 transition-colors line-clamp-2">
                         {title}
@@ -53,9 +56,9 @@ const EventCard = ({ title, date, location, imageUrl, attendeesCount, organizer,
                 <div className="mt-auto pt-4 border-t border-white/10 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                         <div className="relative w-6 h-6 rounded-full overflow-hidden border border-white/20">
-                            <Image src={organizer.avatarUrl} alt={organizer.name} fill className="object-cover" />
+                            <Image src={mainOrganizer.avatarUrl} alt={mainOrganizer.name} fill className="object-cover" />
                         </div>
-                        <span className="text-xs text-white/60">By <span className="text-white hover:underline cursor-pointer">{organizer.name}</span></span>
+                        <span className="text-xs text-white/60">By <span className="text-white hover:underline cursor-pointer">{mainOrganizer.name}</span></span>
                     </div>
                     <Link href={`/events/${id}`} className="py-2 px-3 text-xs bg-white text-black hover:bg-gray-200 active:scale-95 transition-all duration-300 cursor-pointer hover:scale-105 rounded-full">
                         View Details

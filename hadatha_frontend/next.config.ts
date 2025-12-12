@@ -16,6 +16,14 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "ui-avatars.com",
       },
+      {
+        protocol: "https",
+        hostname: "aggregator.walrus-testnet.walrus.space",
+      },
+      {
+        protocol: "https",
+        hostname: "github.com",
+      },
     ],
   }
 };

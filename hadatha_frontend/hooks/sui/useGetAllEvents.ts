@@ -1,0 +1,545 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { useSuiClientQuery } from "@mysten/dapp-kit";
+import { SuiObjectResponse } from "@mysten/sui/client";
+import { REGISTRY_PACKAGE_ID, HADATHA_MODULE, ACCOUNT_ROOT_ID } from "@/lib/constant";
+import { deriveObjectID } from '@mysten/sui/utils';
+import { bcs } from "@mysten/sui/bcs";
+import { Event } from "@/types";
+import { AttendeeDetails, useGetEventAttendees } from "./useGetEventAttendees";
+
+// Helper function to convert vector<u8> to string
+export const bytesToString = (bytes: number[]): string => {
+    try {
+        if (!bytes || bytes.length === 0) return '';
+        return new TextDecoder().decode(new Uint8Array(bytes));
+    } catch (error) {
+        console.error('Error decoding bytes:', error, bytes);
+        return '';
+    }
+};
+
+// Helper function to convert timestamp to date string
+const timestampToDate = (timestamp: string | number): string => {
+    try {
+        const ts = Number(timestamp);
+        if (isNaN(ts)) return new Date().toISOString();
+        return new Date(ts).toISOString();
+    } catch (error) {
+        console.error('Error converting timestamp:', error, timestamp);
+        return new Date().toISOString();
+    }
+};
+
+// Generate avatar URL from address
+const getAvatarUrl = (address: string, name?: string): string => {
+    if (name && name.trim()) {
+        return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random`;
+    }
+    return `https://ui-avatars.com/api/?name=${address.slice(0, 6)}&background=random`;
+};
+
+// Get all EventCreated events
+export const useGetAllEvents = () => {
+    return useSuiClientQuery("queryEvents", {
+        query: {
+            MoveEventType: `${REGISTRY_PACKAGE_ID}::${HADATHA_MODULE}::EventCreated`
+        },
+        order: "descending"
+    });
+};
+
+// Extract event IDs from EventCreated events
+const useGetEventIds = () => {
+    const { data, isLoading, error } = useGetAllEvents();
+
+    // console.log('Event IDs Query:', { data, isLoading, error });
+
+    const eventIds = data?.data.map((event) => {
+        // console.log('Event data:', event);
+        const parsedJson = event.parsedJson as { event_id: string };
+        // console.log('Parsed event_id:', parsedJson.event_id);
+        return parsedJson.event_id;
+    }) || [];
+
+    // console.log('Extracted Event IDs:', eventIds);
+
+    return { eventIds, isLoading, error };
+};
+
+// Get all event details
+export const useGetAllEventDetails = () => {
+    const { eventIds, isLoading: idsLoading, error: idsError } = useGetEventIds();
+
+    // console.log('Event IDs for fetching:', { eventIds, idsLoading, idsError });
+
+    // 1. Fetch all event objects
+    const { data: eventDetails, isLoading: eventsLoading, error: eventsError } = useSuiClientQuery(
+        "multiGetObjects",
+        {
+            ids: eventIds,
+            options: {
+                showContent: true,
+                showOwner: true,
+            }
+        },
+        {
+            enabled: eventIds.length > 0,
+        }
+    );
+
+    // console.log('Event Details Response:', {
+    //     eventDetails,
+    //     eventsLoading,
+    //     eventsError,
+    //     count: eventDetails?.length
+    // });
+
+    // 2. Extract all unique organizer addresses
+    const organizerAddresses = new Set<string>();
+
+    (eventDetails || []).forEach((obj: SuiObjectResponse) => {
+        // console.log('Processing event object:', obj);
+        if (obj.data?.content?.dataType === "moveObject") {
+            const content = obj.data.content as any;
+            // console.log('Event content:', content);
+            // console.log('Event fields:', content.fields);
+            const organizers = content.fields.organizers as string[];
+            // console.log('Organizers:', organizers);
+            organizers.forEach(address => organizerAddresses.add(address));
+        }
+    });
+
+    const uniqueOrganizerAddresses = Array.from(organizerAddresses);
+    // console.log('Unique organizer addresses:', uniqueOrganizerAddresses);
+
+    // 3. Derive account IDs for all organizers
+    const accountIdsWithIndex: { id: string; address: string; index: number }[] = [];
+    uniqueOrganizerAddresses.forEach((address, index) => {
+        try {
+            const derivedId = deriveObjectID(
+                ACCOUNT_ROOT_ID,
+                'address',
+                bcs.Address.serialize(address).toBytes(),
+            );
+            accountIdsWithIndex.push({ id: derivedId, address, index });
+            // console.log(`Derived account ID for ${address}:`, derivedId);
+        } catch (error) {
+            console.error(`Error deriving account ID for ${address}:`, error);
+        }
+    });
+
+    const accountIds = accountIdsWithIndex.map(item => item.id);
+    // console.log('Account IDs to fetch:', accountIds);
+
+    // 4. Fetch all account objects
+    const { data: accountObjects, isLoading: accountsLoading } = useSuiClientQuery(
+        "multiGetObjects",
+        {
+            ids: accountIds,
+            options: {
+                showContent: true,
+            }
+        },
+        {
+            enabled: accountIds.length > 0,
+        }
+    );
+
+    // console.log('Account Objects Response:', {
+    //     accountObjects,
+    //     accountsLoading,
+    //     count: accountObjects?.length
+    // });
+
+    if (idsLoading || eventsLoading || accountsLoading) {
+        // console.log('Still loading:', { idsLoading, eventsLoading, accountsLoading });
+        return { events: [], isLoading: true, error: null };
+    }
+
+    if (eventsError) {
+        // console.error('Events error:', eventsError);
+        return { events: [], isLoading: false, error: eventsError };
+    }
+
+    if (!eventDetails || eventDetails.length === 0) {
+        // console.log('No event details found');
+        return { events: [], isLoading: false, error: null };
+    }
+
+    // 5. Create a map of address -> AccountDetails
+    const accountMap = new Map<string, { name: string; email: string; imageUrl: string }>();
+
+    if (accountObjects) {
+        accountObjects.forEach((obj, index) => {
+            // console.log(`Processing account object ${index}:`, obj);
+            if (obj.data?.content?.dataType === "moveObject") {
+                try {
+                    const fields = obj.data.content.fields as any;
+                    // console.log('Account fields:', fields);
+                    const addressMapping = accountIdsWithIndex[index];
+
+                    if (addressMapping) {
+                        const accountData = {
+                            name: bytesToString(fields.name),
+                            email: bytesToString(fields.email),
+                            imageUrl: bytesToString(fields.image_url || []),
+                        };
+                        // console.log(`Mapping account for ${addressMapping.address}:`, accountData);
+                        accountMap.set(addressMapping.address, accountData);
+                    }
+                } catch (error) {
+                    console.error('Error parsing account object:', error);
+                }
+            } else {
+                console.log(`Account object ${index} is not a moveObject or doesn't exist`);
+            }
+        });
+    }
+
+    console.log('Final account map:', accountMap);
+
+    // 6. Parse the event details and populate organizers
+    const events: Event[] = eventDetails
+        .filter((obj: SuiObjectResponse) => {
+            const isValid = obj.data?.content?.dataType === "moveObject";
+            if (!isValid) {
+                console.log('Filtered out invalid event object:', obj);
+            }
+            return isValid;
+        })
+        .map((obj: SuiObjectResponse) => {
+            try {
+                const content = obj.data?.content as any;
+                const fields = content.fields;
+                // console.log('Parsing event fields:', fields);
+
+                // Parse organizers with account info
+                const organizers = (fields.organizers as string[]).map((address: string) => {
+                    const account = accountMap.get(address);
+                    // console.log(`Organizer ${address} account:`, account);
+                    return {
+                        address,
+                        name: account?.name || `${address.slice(0, 6)}...${address.slice(-4)}`,
+                        avatarUrl: account?.imageUrl || getAvatarUrl(address, account?.name),
+                    };
+                });
+
+                // Parse the event data
+                const event: Event = {
+                    id: fields.id.id,
+                    title: bytesToString(fields.title),
+                    description: bytesToString(fields.description),
+                    location: bytesToString(fields.location),
+                    start_time: timestampToDate(fields.start_time),
+                    end_time: timestampToDate(fields.end_time),
+                    date: timestampToDate(fields.start_time),
+                    imageUrl: bytesToString(fields.image_url),
+                    organizers,
+                    attendeesCount: Number(fields.attendees_count),
+                    checkedInCount: Number(fields.checked_in_count),
+                    createdAt: timestampToDate(fields.created_at),
+                    updatedAt: timestampToDate(fields.updated_at),
+                    registration_fields: fields.registration_fields.map((field: any) => ({
+                        name: bytesToString(field.fields.name),
+                        type: bytesToString(field.fields.field_type),
+                    })),
+                    maxAttendees: Number(fields.max_attendees),
+                    tags: fields.tags.map((tag: number[]) => bytesToString(tag)),
+                    status: bytesToString(fields.status),
+                    price: bytesToString(fields.price),
+                    allowCheckin: fields.allow_checkin,
+                };
+
+                // console.log('Parsed event:', event);
+                return event;
+            } catch (error) {
+                console.error('Error parsing event object:', error, obj);
+                return null;
+            }
+        })
+        .filter((event): event is Event => event !== null);
+
+    // console.log('Final events:', events);
+
+    return { events, isLoading: false, error: null };
+};
+
+// Get a single event by ID with organizer details
+export const useGetEventById = (eventId: string) => {
+    console.log('Fetching event by ID:', eventId);
+
+    const { data, isLoading, error } = useSuiClientQuery(
+        "getObject",
+        {
+            id: eventId,
+            options: {
+                showContent: true,
+                showOwner: true,
+            }
+        },
+        {
+            enabled: !!eventId,
+        }
+    );
+
+    console.log('Single event query result:', { data, isLoading, error });
+
+    // Extract organizer addresses
+    const organizerAddresses = data?.data?.content?.dataType === "moveObject"
+        ? ((data.data.content as any).fields.organizers as string[])
+        : [];
+
+    console.log('Organizer addresses from event:', organizerAddresses);
+
+    // Derive account IDs
+    const accountIdsWithAddress: { id: string; address: string }[] = [];
+    organizerAddresses.forEach(address => {
+        try {
+            const derivedId = deriveObjectID(
+                ACCOUNT_ROOT_ID,
+                'address',
+                bcs.Address.serialize(address).toBytes(),
+            );
+            accountIdsWithAddress.push({ id: derivedId, address });
+            console.log(`Derived account ID for ${address}:`, derivedId);
+        } catch (error) {
+            console.error(`Error deriving account ID for ${address}:`, error);
+        }
+    });
+
+    const accountIds = accountIdsWithAddress.map(item => item.id);
+
+    // Fetch account objects
+    const { data: accountObjects, isLoading: accountsLoading } = useSuiClientQuery(
+        "multiGetObjects",
+        {
+            ids: accountIds,
+            options: {
+                showContent: true,
+            }
+        },
+        {
+            enabled: accountIds.length > 0,
+        }
+    );
+
+    console.log('Account objects for single event:', { accountObjects, accountsLoading });
+
+    if (isLoading || accountsLoading) {
+        return { event: null, isLoading: true, error };
+    }
+
+    if (!data || data.data?.content?.dataType !== "moveObject") {
+        console.error('Invalid event data:', data);
+        return { event: null, isLoading: false, error: error || new Error("Invalid object type") };
+    }
+
+    const content = data.data.content as any;
+    const fields = content.fields;
+
+    // Create account map
+    const accountMap = new Map<string, { name: string; email: string; imageUrl: string }>();
+    if (accountObjects) {
+        accountObjects.forEach((obj, index) => {
+            if (obj.data?.content?.dataType === "moveObject") {
+                try {
+                    const accFields = obj.data.content.fields as any;
+                    const addressMapping = accountIdsWithAddress[index];
+                    accountMap.set(addressMapping.address, {
+                        name: bytesToString(accFields.name),
+                        email: bytesToString(accFields.email),
+                        imageUrl: bytesToString(accFields.image_url || []),
+                    });
+                } catch (error) {
+                    console.error('Error parsing account:', error);
+                }
+            }
+        });
+    }
+    // // Add this debugging code to your useGetEventById or useGetAllEventDetails hook
+
+    // // After getting the fields object, add this:
+    // console.log('=== DEBUGGING REGISTRATION FIELDS ===');
+    // console.log('Raw fields object:', JSON.stringify(fields, null, 2));
+    // console.log('registration_fields type:', typeof fields.registration_fields);
+    // console.log('registration_fields value:', fields.registration_fields);
+
+    // // Try different parsing approaches
+    // if (Array.isArray(fields.registration_fields)) {
+    //     console.log('registration_fields is an array with length:', fields.registration_fields.length);
+
+    //     fields.registration_fields.forEach((field: any, index: number) => {
+    //         console.log(`\n--- Field ${index} ---`);
+    //         console.log('Field object:', field);
+    //         console.log('Field keys:', Object.keys(field));
+    //         console.log('Field.name:', field.name);
+    //         console.log('Field.field_type:', field.field_type);
+    //         console.log('Field.fields:', field.fields);
+
+    //         // Try different access patterns
+    //         if (field.fields) {
+    //             console.log('Field.fields.name:', field.fields.name);
+    //             console.log('Field.fields.field_type:', field.fields.field_type);
+    //         }
+
+    //         // Try converting
+    //         if (field.name) {
+    //             console.log('Converted name:', bytesToString(field.name));
+    //         }
+    //         if (field.field_type) {
+    //             console.log('Converted field_type:', bytesToString(field.field_type));
+    //         }
+    //     });
+    // } else {
+    //     console.log('registration_fields is NOT an array:', fields.registration_fields);
+    // }
+
+    // Modified parsing with better error handling
+    const registration_fields = (() => {
+        try {
+            if (!fields.registration_fields || !Array.isArray(fields.registration_fields)) {
+                console.warn('registration_fields is not an array or is undefined');
+                return [];
+            }
+
+            return fields.registration_fields.map((field: any, index: number) => {
+                try {
+                    // Try multiple access patterns
+                    const nameData = field.fields?.name || field.name;
+                    const typeData = field.fields?.field_type || field.field_type;
+
+                    if (!nameData || !typeData) {
+                        console.warn(`Field ${index} missing data:`, { nameData, typeData, field });
+                        return null;
+                    }
+
+                    const name = bytesToString(nameData);
+                    const type = bytesToString(typeData);
+
+                    console.log(`Parsed field ${index}:`, { name, type });
+
+                    return { name, type };
+                } catch (error) {
+                    console.error(`Error parsing field ${index}:`, error, field);
+                    return null;
+                }
+            }).filter(Boolean); // Remove null entries
+        } catch (error) {
+            console.error('Error parsing registration_fields:', error);
+            return [];
+        }
+    })();
+
+    console.log('Final parsed registration_fields:', registration_fields);
+    console.log('=== END DEBUGGING ===\n');
+    console.log(fields)
+
+    const event: Event = {
+        id: fields.id.id,
+        title: bytesToString(fields.title),
+        description: bytesToString(fields.description),
+        location: bytesToString(fields.location),
+        start_time: timestampToDate(fields.start_time),
+        end_time: timestampToDate(fields.end_time),
+        date: timestampToDate(fields.start_time),
+        imageUrl: bytesToString(fields.image_url),
+        organizers: (fields.organizers as string[]).map((address: string) => {
+            const account = accountMap.get(address);
+            return {
+                address: address,
+                name: account?.name || `${address.slice(0, 6)}...${address.slice(-4)}`,
+                avatarUrl: account?.imageUrl || getAvatarUrl(address, account?.name),
+            };
+        }),
+        attendeesCount: Number(fields.attendees_count),
+        checkedInCount: Number(fields.checked_in_count),
+        createdAt: timestampToDate(fields.created_at),
+        updatedAt: timestampToDate(fields.updated_at),
+        registration_fields: fields.registration_fields.map((field: any) => ({
+            name: bytesToString(field.fields.name),
+            type: bytesToString(field.fields.field_type),
+        })),
+        maxAttendees: Number(fields.max_attendees),
+        tags: fields.tags.map((tag: number[]) => bytesToString(tag)),
+        status: bytesToString(fields.status),
+        price: bytesToString(fields.price),
+        allowCheckin: fields.allow_checkin,
+    };
+
+    console.log('Final parsed single event:', event);
+
+    return { event, isLoading: false, error: null };
+};
+
+// Get events by status
+export const useGetEventsByStatus = (status: "ongoing" | "closed" | "hidden" | "past") => {
+    const { events, isLoading, error } = useGetAllEventDetails();
+
+    const filteredEvents = events.filter(event => event.status === status);
+
+    return { events: filteredEvents, isLoading, error };
+};
+
+// Get events organized by a specific address
+export const useGetEventsByOrganizer = (organizerAddress: string) => {
+    const { events, isLoading, error } = useGetAllEventDetails();
+
+    const organizerEvents = events.filter(event =>
+        event.organizers.some(org => org.address === organizerAddress)
+    );
+
+    return { events: organizerEvents, isLoading, error };
+};
+
+export const useGetEventByIdWithAttendees = (eventId: string) => {
+    // Get basic event data
+    const { event, isLoading: eventLoading, error: eventError } = useGetEventById(eventId);
+
+    // Get attendees data
+    const {
+        attendees,
+        isLoading: attendeesLoading,
+        error: attendeesError,
+        summary
+    } = useGetEventAttendees(eventId);
+
+    if (eventLoading || attendeesLoading) {
+        return {
+            event: null,
+            attendees: [],
+            isLoading: true,
+            error: null,
+            summary: { total: 0, checkedIn: 0, nftMinted: 0 }
+        };
+    }
+
+    if (eventError || attendeesError) {
+        return {
+            event: null,
+            attendees: [],
+            isLoading: false,
+            error: eventError || attendeesError,
+            summary: { total: 0, checkedIn: 0, nftMinted: 0 }
+        };
+    }
+
+    // Merge event with attendees
+    const eventWithAttendees = event ? {
+        ...event,
+        attendees: attendees.map(a => a.address),
+        attendeeDetails: attendees,
+    } : null;
+
+    return {
+        event: eventWithAttendees,
+        attendees,
+        isLoading: false,
+        error: null,
+        summary
+    };
+};
+
+// Updated type for Event with attendee details
+export interface EventWithAttendees extends Event {
+    attendeeDetails?: AttendeeDetails[];
+}

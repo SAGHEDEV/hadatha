@@ -364,7 +364,7 @@ const EventDetails = ({ event, preview = false }: { event: Event, preview?: bool
 
                                 <p className="pb-4 border-b border-white/10">Checkin Settings</p>
                                 <Button
-                                    disabled={hasEventEnded}
+                                    // disabled={hasEventEnded}
                                     className="w-full rounded-xl py-6 text-base font-medium bg-white/10 text-white border border-white/10 hover:bg-white/20 hover:border-white/30 transition-all cursor-pointer justify-start px-4"
                                     onClick={() => setIsCheckInModalOpen(true)}
                                 >

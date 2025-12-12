@@ -53,7 +53,7 @@ const ConnectWalletModal = ({ open, setOpen, redirectUrl }: { open: boolean, set
             <div className="p-6 rounded-2xl flex flex-col gap-4">
                 <div className="flex flex-col gap-1 items-center">
                     <h1 className="text-2xl font-bold text-white w-full max-w-[400px]">Connect Wallet To Continue</h1>
-                    <p className="text-white/70 mt-2 w-full max-w-[320px]">
+                    <p className="text-white/70 mt-2 w-full max-w-[320px] text-center">
                         Connect your wallet to {hasAccount ? "continue" : "register and start minting tickets"}
                     </p>
                 </div>

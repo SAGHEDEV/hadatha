@@ -7,9 +7,6 @@ import { Download } from "lucide-react";
 import QRCodeStyling from "qr-code-styling";
 import { useEffect } from "react";
 
-// ============================================
-// GeneratedQrModal - Creates QR code for event
-// ============================================
 const GeneratedQrModal = ({
     open,
     setOpen,

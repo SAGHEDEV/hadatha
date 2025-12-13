@@ -12,36 +12,36 @@ interface OrganizerDetails {
 
 export const useGetOrganizersByAddresses = (addresses: string[]) => {
     // Keep track of which addresses succeeded
-    const addressIdMap = addresses.map(address => {
-        try {
-            const id = deriveObjectID(
-                ACCOUNT_ROOT_ID,
-                'address',
-                bcs.Address.serialize(address).toBytes(),
-            );
-            return { address, id };
-        } catch (error) {
-            console.error(`Failed to derive ID for address ${address}:`, error);
-            return { address, id: null };
-        }
-    });
+    // const addressIdMap = addresses.map(address => {
+    //     try {
+    //         const id = deriveObjectID(
+    //             ACCOUNT_ROOT_ID,
+    //             'address',
+    //             bcs.Address.serialize(address).toBytes(),
+    //         );
+    //         return { address, id };
+    //     } catch (error) {
+    //         console.error(`Failed to derive ID for address ${address}:`, error);
+    //         return { address, id: null };
+    //     }
+    // });
 
-    const derivedIds = addressIdMap
-        .filter(item => item.id !== null)
-        .map(item => item.id!);
+    // const derivedIds = addressIdMap
+    //     .filter(item => item.id !== null)
+    //     .map(item => item.id!);
 
     const { data, isLoading, error } = useSuiClientQuery(
         "multiGetObjects",
         {
-            ids: derivedIds,
+            ids: addresses,
             options: { showContent: true }
         },
-        { enabled: derivedIds.length > 0 }
+        { enabled: addresses.length > 0 }
     );
 
     // Map back to original addresses
-    const organizers: OrganizerDetails[] = addressIdMap.map(({ address, id }) => {
-        if (!id) {
+    const organizers: OrganizerDetails[] = addresses.map(address => {
+        if (!address) {
             // Derivation failed - return placeholder
             return {
                 name: address.slice(0, 6) + "..." + address.slice(-4),
@@ -50,7 +50,7 @@ export const useGetOrganizersByAddresses = (addresses: string[]) => {
             };
         }
 
-        const dataIndex = derivedIds.indexOf(id);
+        const dataIndex = addresses.indexOf(address);
         const accountObject = data?.[dataIndex];
 
         if (!accountObject?.data?.content || accountObject.data.content.dataType !== "moveObject") {

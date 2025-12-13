@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { Event } from "@/types";
-import { Calendar, Clock, Globe, MapPin, Share2, Edit, Users, Image as ImageIcon, QrCode, Settings } from "lucide-react";
+import { Calendar, Clock, Globe, MapPin, Share2, Edit, Users, Image as ImageIcon, QrCode, Settings, CheckCircle } from "lucide-react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { RegistrationModal } from "@/components/events/RegistrationModal";
@@ -61,18 +61,22 @@ const EventDetails = ({ event, preview = false }: { event: Event, preview?: bool
     const { mintNFT, isMinting } = useMintAttendanceNFT()
     const router = useRouter()
 
-    console.log(event)
-    console.log("attendees", event.attendees)
-
-
     // Check if current user is an organizer
     const isOrganizer = currentAccount && event?.organizers.some(org => org.address === currentAccount?.address);
-    console.log(event?.attendees)
+
     // Check if user is already registered
     const isRegistered = derivedAddress && currentAccount?.address && event?.attendees?.includes(currentAccount?.address);
 
-    const isAttended = derivedAddress && currentAccount?.address && event?.attendeeDetails?.some((attendee) => (attendee.address === currentAccount?.address && attendee?.checkedIn))
-    console.log("isAttended", isAttended)
+    // Check if user has checked in
+    const isCheckedIn = currentAccount?.address && event?.attendeeDetails?.some(
+        (attendee) => attendee.address === currentAccount?.address && attendee?.checkedIn
+    );
+
+    // Check if user has minted NFT
+    const hasMinNFT = currentAccount?.address && event?.attendeeDetails?.some(
+        (attendee) => attendee.address === currentAccount?.address && attendee?.nftMinted
+    );
+
     // Check if event is full
     const isEventFull = (event?.attendeesCount || 0) >= (event?.maxAttendees || 0);
 
@@ -81,8 +85,6 @@ const EventDetails = ({ event, preview = false }: { event: Event, preview?: bool
 
     // Check if event has ended
     const hasEventEnded = new Date(event.end_time) <= new Date();
-    console.log("hasEventEnded", hasEventEnded, "hasEventStarted", hasEventStarted)
-    console.log((isRegistered && !hasEventEnded && event.allowCheckin), isRegistered, !hasEventEnded, event.allowCheckin)
 
     return (
         <div className="flex flex-col gap-8">
@@ -285,39 +287,67 @@ const EventDetails = ({ event, preview = false }: { event: Event, preview?: bool
                                     )}
 
                                     {/* Already Registered Message */}
-                                    {isRegistered && (
+                                    {isRegistered && !isCheckedIn && (
                                         <div className="w-full rounded-full py-3 text-lg font-semibold bg-green-600/10 text-green-400 border border-green-500/50 text-center">
                                             ✓ You&apos;re Registered
                                         </div>
                                     )}
 
-                                    {/* Check-in Button */}
-                                    {(isRegistered && !hasEventEnded && event.allowCheckin) ? (
+                                    {/* Already Checked In Message */}
+                                    {isCheckedIn && (
+                                        <div className="w-full rounded-full py-3 text-lg font-semibold bg-blue-600/10 text-blue-400 border border-blue-500/50 text-center flex items-center justify-center gap-2">
+                                            <CheckCircle className="w-5 h-5" />
+                                            Already Checked In
+                                        </div>
+                                    )}
+
+                                    {/* Check-in Button - Only show if registered, not checked in, event ongoing, and check-in allowed */}
+                                    {isRegistered && !isCheckedIn && !hasEventEnded && event.allowCheckin && (
                                         <Button
                                             onClick={() => setIsCheckInModalOpen(true)}
                                             disabled={preview}
                                             className="w-full rounded-full py-6 text-lg font-semibold bg-green-700 text-white hover:bg-green-600 active:scale-95 transition-all hover:scale-105 cursor-pointer"
                                         >
-                                            Check In
+                                            Check In Now
                                         </Button>
-                                    ) : (!hasEventEnded && !event.allowCheckin) ? <p className="text-center">Attendees are not allowed to check-in yet</p> : <p className="text-center">Event has ended</p>}
+                                    )}
 
-                                    {/* Mint NFT Button (if event has ended and user is registered) */}
-                                    {(isRegistered && isAttended && hasEventEnded) && (
+                                    {/* Check-in Status Messages */}
+                                    {isRegistered && !isCheckedIn && !hasEventEnded && !event.allowCheckin && (
+                                        <p className="text-center text-white/60 text-sm">
+                                            Check-in is not available yet
+                                        </p>
+                                    )}
+
+                                    {isRegistered && !isCheckedIn && hasEventEnded && (
+                                        <p className="text-center text-white/60 text-sm">
+                                            Event has ended. Check-in is no longer available.
+                                        </p>
+                                    )}
+
+                                    {/* Mint NFT Button - Only show if checked in, event ended, and not minted yet */}
+                                    {isCheckedIn && hasEventEnded && !hasMinNFT && (
                                         <Button
-                                            onClick={() => mintNFT({ eventId: event.id, accountId: derivedAddress })}
-
+                                            onClick={() => mintNFT({ eventId: event.id, accountId: derivedAddress! })}
                                             disabled={preview || isMinting}
-                                            className="w-full rounded-full py-6 text-lg font-semibold bg-purple-700 text-white hover:bg-purple-600 active:scale-95 transition-all hover:scale-105 cursor-pointer"
+                                            className="w-full rounded-full py-6 text-lg font-semibold bg-purple-700 text-white hover:bg-purple-600 active:scale-95 transition-all hover:scale-105 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                                         >
-                                            {isMinting ? "Minting..." : "Mint Attendance NFT"}
+                                            {isMinting ? "Minting NFT..." : "Mint Attendance NFT"}
                                         </Button>
+                                    )}
+
+                                    {/* NFT Already Minted Message */}
+                                    {hasMinNFT && (
+                                        <div className="w-full rounded-full py-3 text-lg font-semibold bg-purple-600/10 text-purple-400 border border-purple-500/50 text-center flex items-center justify-center gap-2">
+                                            <CheckCircle className="w-5 h-5" />
+                                            NFT Minted
+                                        </div>
                                     )}
                                 </>
                             )}
                         </div>
 
-                        {event.attendeesCount! < event.maxAttendees! && !hasEventEnded && (
+                        {!hasEventEnded && event.attendeesCount! < event.maxAttendees! && (
                             <p className="text-center text-white/40 text-xs">
                                 {event.maxAttendees! - event.attendeesCount!} spots remaining
                             </p>
@@ -365,36 +395,38 @@ const EventDetails = ({ event, preview = false }: { event: Event, preview?: bool
                                     Check-in QR Code
                                 </Button>
 
-                                <p className="pb-4 border-b border-white/10">Checkin Settings</p>
-                                <Button
-                                    // disabled={hasEventEnded}
+                                <p className="pb-4 border-b border-white/10">Check-in Settings</p>
+                                {/* <Button
                                     className="w-full rounded-xl py-6 text-base font-medium bg-white/10 text-white border border-white/10 hover:bg-white/20 hover:border-white/30 transition-all cursor-pointer justify-start px-4"
                                     onClick={() => setIsCheckInModalOpen(true)}
                                 >
                                     <Users className="w-4 h-4 mr-3 text-green-400" />
                                     Manual Check-in
-                                </Button>
+                                </Button> */}
                                 <Button
-
                                     className={`w-full py-6 text-base font-medium text-center rounded-full ${event.allowCheckin ? "bg-red-600 text-white hover:bg-red-400" : "bg-green-600 text-white hover:bg-green-400"} transition-all cursor-pointer justify-center px-4 ${isToggling ? "opacity-50 cursor-not-allowed" : ""}`}
                                     onClick={async () => {
                                         try {
                                             await toggleAllowCheckin(event.id)
-                                            setActionEffect({ open: true, title: event.allowCheckin ? "Disabled Checkin Successfully" : "Allowed Checkin Successfully", description: "Checkin allowance has been edited. This may Affect users action", type: "success", })
+                                            setActionEffect({
+                                                open: true,
+                                                title: event.allowCheckin ? "Check-in Disabled" : "Check-in Enabled",
+                                                description: event.allowCheckin ? "Attendees can no longer check in" : "Attendees can now check in to the event",
+                                                type: "success",
+                                            })
                                         } catch (error) {
                                             console.log(error)
-                                            setActionEffect({ open: true, title: "An error occurred", description: "An error occurred while trying to toggle event checkin", type: "error" })
+                                            setActionEffect({
+                                                open: true,
+                                                title: "An error occurred",
+                                                description: "Failed to toggle check-in settings",
+                                                type: "error"
+                                            })
                                         }
                                     }}
                                     disabled={isToggling || hasEventEnded}
                                 >
-                                    {isToggling ? "Allowing user CheckIn..." : event.allowCheckin ? "Disallow user CheckIn" : "Allow user CheckIn"}
-
-                                    {/* display a switch */}
-                                    {/* <Switch
-                                        checked={event.allowCheckin}
-                                    // onCheckedChange={setAllowUserCheckIn}
-                                    /> */}
+                                    {isToggling ? "Updating..." : event.allowCheckin ? "Disable Check-in" : "Enable Check-in"}
                                 </Button>
                             </div>
                         </div>
@@ -431,7 +463,13 @@ const EventDetails = ({ event, preview = false }: { event: Event, preview?: bool
                 open={isShareModalOpen}
                 setOpen={setIsShareModalOpen}
             />
-            <StatusModal isOpen={actionEffect.open} onClose={() => setActionEffect((prev) => ({ ...prev, open: false }))} type={actionEffect.type} title={actionEffect.title} description={actionEffect.description} />
+            <StatusModal
+                isOpen={actionEffect.open}
+                onClose={() => setActionEffect((prev) => ({ ...prev, open: false }))}
+                type={actionEffect.type}
+                title={actionEffect.title}
+                description={actionEffect.description}
+            />
         </div>
     )
 }

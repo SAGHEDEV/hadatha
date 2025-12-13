@@ -13,7 +13,7 @@ const EventsPage = () => {
     const categories = ["All", "Tech", "Art", "Music", "Business", "Social"]
     const locations = ["All", "Online", "In-Person", "Nearest to me"]
 
-    const { events, isLoading, error } = useGetAllEventDetails()
+    const { events, isLoading, error } = useGetAllEventDetails(1000)
     console.log(events)
 
 

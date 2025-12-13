@@ -9,7 +9,7 @@ const EventDetailsPage = () => {
     const params = useParams();
     const id = params.id as string;
 
-    const { event, isLoading, error } = useGetEventByIdWithAttendees(id);
+    const { event, isLoading, error } = useGetEventByIdWithAttendees(id, 1000);
     console.log(event?.attendees)
 
     if (isLoading) {

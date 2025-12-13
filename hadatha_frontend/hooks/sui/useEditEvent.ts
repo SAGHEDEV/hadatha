@@ -43,6 +43,8 @@ export const useEditEvent = () => {
                         tx.pure.u64(params.endTime),
                         tx.pure.string(params.imageUrl),
                         tx.pure.u64(params.maxAttendees),
+                        tx.pure.vector("string", params.registrationFieldNames),
+                        tx.pure.vector("string", params.registrationFieldTypes),
                         tx.pure.vector("string", params.tags),
                         tx.pure.string(params.price),
                         tx.pure.vector("address", params.organizers),

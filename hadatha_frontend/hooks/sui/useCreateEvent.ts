@@ -14,6 +14,7 @@ interface CreateEventParams {
     imageUrl: string;
     registrationFieldNames: string[];
     registrationFieldTypes: string[];
+    organizers: string[];
     maxAttendees: number;
     tags: string[];
     price: string;
@@ -46,6 +47,7 @@ export const useCreateEvent = () => {
                         tx.pure.string(params.imageUrl),
                         tx.pure.vector("string", params.registrationFieldNames),
                         tx.pure.vector("string", params.registrationFieldTypes),
+                        tx.pure.vector("address", params.organizers),
                         tx.pure.u64(params.maxAttendees),
                         tx.pure.vector("string", params.tags),
                         tx.pure.string(params.price),

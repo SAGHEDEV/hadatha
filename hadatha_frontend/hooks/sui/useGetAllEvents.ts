@@ -90,12 +90,12 @@ export const useGetAllEventDetails = (refetchInterval?: number) => {
         }
     );
 
-    // console.log('Event Details Response:', {
-    //     eventDetails,
-    //     eventsLoading,
-    //     eventsError,
-    //     count: eventDetails?.length
-    // });
+    console.log('Event Details Response:', {
+        eventDetails,
+        eventsLoading,
+        eventsError,
+        count: eventDetails?.length
+    });
 
     // 2. Extract all unique organizer addresses
     const organizerAddresses = new Set<string>();
@@ -257,9 +257,22 @@ export const useGetAllEventDetails = (refetchInterval?: number) => {
                     status: bytesToString(fields.status),
                     price: bytesToString(fields.price),
                     allowCheckin: fields.allow_checkin,
+                    nft_config: fields.nft_config ? {
+                        enabled: !!fields.nft_config.enabled,
+                        nft_name: bytesToString(fields.nft_config.nft_name || []),
+                        nft_description: bytesToString(fields.nft_config.nft_description || []),
+                        nft_image_url: bytesToString(fields.nft_config.nft_image_url || []),
+                        total_minted: Number(fields.nft_config.total_minted || 0),
+                    } : {
+                        enabled: false,
+                        nft_name: "",
+                        nft_description: "",
+                        nft_image_url: "",
+                        total_minted: 0,
+                    },
                 };
 
-                // console.log('Parsed event:', event);
+                console.log('Parsed event:', event);
                 return event;
             } catch (error) {
                 console.error('Error parsing event object:', error, obj);
@@ -443,6 +456,19 @@ export const useGetEventById = (eventId: string, refetchInterval?: number) => {
         status: bytesToString(fields.status),
         price: bytesToString(fields.price),
         allowCheckin: fields.allow_checkin,
+        nft_config: fields.nft_config ? {
+            enabled: !!fields.nft_config.enabled,
+            nft_name: bytesToString(fields.nft_config.nft_name || []),
+            nft_description: bytesToString(fields.nft_config.nft_description || []),
+            nft_image_url: bytesToString(fields.nft_config.nft_image_url || []),
+            total_minted: Number(fields.nft_config.total_minted || 0),
+        } : {
+            enabled: false,
+            nft_name: "",
+            nft_description: "",
+            nft_image_url: "",
+            total_minted: 0,
+        },
     };
 
     console.log('Final parsed single event:', event);

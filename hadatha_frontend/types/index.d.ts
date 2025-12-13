@@ -29,6 +29,7 @@ export interface Event {
     price?: string;
     allowCheckin?: boolean;
     checkedInCount?: number;
+    nft_config?: NFTConfig;
 }
 
 export type RegistrationStatus = "registered" | "checked-in" | "cancelled";

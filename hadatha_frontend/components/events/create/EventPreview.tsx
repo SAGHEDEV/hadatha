@@ -44,6 +44,7 @@ export function EventPreview() {
         })) || [],
         maxAttendees: values.maxAttendees,
         start_time: values.startTime,
+        price: values.ticketType === "free" ? "0" : "paid",
         end_time: values.endTime,
         tags: values.tags
     }

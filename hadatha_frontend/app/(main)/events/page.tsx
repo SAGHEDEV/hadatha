@@ -15,13 +15,11 @@ const EventsPage = () => {
     const locations = ["All", "Online", "In-Person", "Nearest to me"]
 
     const { events, isLoading, error } = useGetAllEventDetails(1000)
-    console.log(events)
+    console.log(events.length)
 
     // Filter events based on status and visibility
     const filteredEvents = useMemo(() => {
         if (!events) return []
-
-        const now = new Date()
 
         return events.filter((event) => {
             // Filter out hidden events
@@ -31,7 +29,7 @@ const EventsPage = () => {
             // const eventEndTime = Number(event.end_time)
 
             if (eventStatus === "ongoing") {
-                return new Date(event.start_time) <= new Date() && new Date(event.end_time) >= new Date()
+                return new Date(event.end_time) >= new Date()
             } else {
                 return new Date(event.start_time) <= new Date() && new Date(event.end_time) <= new Date()
             }

@@ -105,6 +105,7 @@ export default function CreateEventPage() {
                 imageUrl: image_url,
                 registrationFieldNames,
                 registrationFieldTypes,
+                organizers: data.organizer || [],
                 maxAttendees: data.maxAttendees,
                 tags: data.tags || [],
                 price: data.ticketType === "free" ? "0" : "0", // Default to 0 for now as paid is disabled

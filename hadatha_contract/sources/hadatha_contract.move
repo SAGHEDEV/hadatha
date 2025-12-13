@@ -263,6 +263,7 @@ module hadatha_contract::hadatha_contract {
         image_url: vector<u8>,
         registration_field_names: vector<vector<u8>>,
         registration_field_types: vector<vector<u8>>,
+        event_organizers: vector<address>,
         max_attendees: u64,
         tags: vector<vector<u8>>,
         price: vector<u8>,
@@ -274,6 +275,14 @@ module hadatha_contract::hadatha_contract {
         
         let mut organizers = vector::empty<address>();
         vector::push_back(&mut organizers, sender);
+
+        let org_len = vector::length(&event_organizers);
+        let mut j = 0;
+        while (j < org_len) {
+            let org = *vector::borrow(&event_organizers, j);
+            vector::push_back(&mut organizers, org);
+            j = j + 1;
+        };
 
         let mut fields = vector::empty<RegistrationField>();
         let len = vector::length(&registration_field_names);
@@ -594,8 +603,11 @@ module hadatha_contract::hadatha_contract {
         end_time: u64,
         image_url: vector<u8>,
         max_attendees: u64,
+        registration_field_names: vector<vector<u8>>,
+        registration_field_types: vector<vector<u8>>,
         tags: vector<vector<u8>>,
         price: vector<u8>,
+        organizers: vector<address>,
         clock: &Clock,
         ctx: &mut TxContext
     ) {
@@ -604,6 +616,19 @@ module hadatha_contract::hadatha_contract {
 
         // Check if sender is an organizer
         assert!(vector::contains(&event.organizers, &sender), ENotOrganizer);
+
+        let mut fields = vector::empty<RegistrationField>();
+        let len = vector::length(&registration_field_names);
+        let mut i = 0;
+
+        while (i < len) {
+            let f = RegistrationField {
+                name: *vector::borrow(&registration_field_names, i),
+                field_type: *vector::borrow(&registration_field_types, i),
+            };
+            vector::push_back(&mut fields, f);
+            i = i + 1;
+        };
 
         event.title = title;
         event.description = description;
@@ -615,6 +640,8 @@ module hadatha_contract::hadatha_contract {
         event.tags = tags;
         event.price = price;
         event.updated_at = current_time;
+        event.organizers = organizers;
+        event.registration_fields = fields;
 
         event::emit(EventUpdated {
             event_id: object::id(event),

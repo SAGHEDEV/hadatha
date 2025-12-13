@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import ModalWrapper from "../miscellneous/ModalWrapper"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -11,7 +11,7 @@ import Image from "next/image"
 import { useUploadToWalrus } from "@/hooks/useUploadToWalrus"
 import { useEmbossedImageGenerator } from "@/hooks/useEmbossedImageGenerator"
 import StatusModal from "../miscellneous/StatusModal"
-import { useSetupAttendanceNFT } from "@/hooks/sui/useSetupAttendanceNFT"
+import { useSetupAttendanceNFT, useUpdateNFTCollection } from "@/hooks/sui/useSetupAttendanceNFT"
 
 interface CreateNFTModalProps {
     isOpen: boolean
@@ -19,15 +19,18 @@ interface CreateNFTModalProps {
     eventId: string;
     eventTitle: string
     onSuccess: (imageUrl: string, name: string, description: string) => void
+    section?: "create" | "edit" // "create" (default) or "edit" to update existing NFT details
+    initialNFT?: { nftName?: string; nftDescription?: string; nftImageUrl?: string } // optional prefill for edit
 }
 
 type Step = 'select' | 'upload' | 'ai-preview' | 'details'
 
-export function CreateNFTModal({ isOpen, setOpen, eventId, eventTitle, onSuccess }: CreateNFTModalProps) {
+export function CreateNFTModal({ isOpen, setOpen, eventId, eventTitle, onSuccess, section = "create", initialNFT }: CreateNFTModalProps) {
     const [step, setStep] = useState<Step>('select')
     const [imageFile, setImageFile] = useState<File | null>(null)
     const [imagePreview, setImagePreview] = useState<string | null>(null)
     const { setupNFT, isSettingUp } = useSetupAttendanceNFT()
+    const { updateNFT, isUpdating } = useUpdateNFTCollection()
 
     const [name, setName] = useState(`${eventTitle} - Attendance NFT`)
     const [description, setDescription] = useState(`Official attendance NFT for ${eventTitle}`)
@@ -47,6 +50,27 @@ export function CreateNFTModal({ isOpen, setOpen, eventId, eventTitle, onSuccess
 
     const { uploadToWalrus, isUploading } = useUploadToWalrus()
     const { generateImage, isGenerating } = useEmbossedImageGenerator()
+
+    // Prefill when editing
+    useEffect(() => {
+        if (!isOpen) return
+        
+        if (section === "edit" && initialNFT) {
+            if (initialNFT.nftName) setName(initialNFT.nftName)
+            if (initialNFT.nftDescription) setDescription(initialNFT.nftDescription)
+            if (initialNFT.nftImageUrl) {
+                setImagePreview(initialNFT.nftImageUrl)
+                setStep('details')
+            }
+        } else {
+            // reset defaults on open for create
+            setName(`${eventTitle} - Attendance NFT`)
+            setDescription(`Official attendance NFT for ${eventTitle}`)
+            if (!imageFile) setImagePreview(null)
+            setStep('select')
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isOpen, section, eventTitle])
 
     const reset = () => {
         setStep('select')
@@ -88,17 +112,28 @@ export function CreateNFTModal({ isOpen, setOpen, eventId, eventTitle, onSuccess
     }
 
     const handleSubmit = async () => {
-        if (!imageFile) return
+        // require at least an image URL or file
+        if (!imageFile && !imagePreview) return
 
         try {
-            const url = await uploadToWalrus(imageFile)
+            // If a new file was selected, upload it. Otherwise use existing preview URL (edit case).
+            const url = imageFile ? await uploadToWalrus(imageFile) : (imagePreview as string)
+            
+            // Call appropriate move call depending on section
+            if (section === "edit") {
+                await updateNFT({ eventId, nftName: name, nftDescription: description, nftImageUrl: url })
+            } else {
+                await setupNFT({ eventId: eventId, nftName: name, nftDescription: description, nftImageUrl: url })
+            }
+
             onSuccess(url, name, description)
-            await setupNFT({ eventId: eventId, nftName: name, nftDescription: description, nftImageUrl: url })
             setStatusModal({
                 isOpen: true,
                 type: 'success',
-                title: 'NFT Created Successfully',
-                description: 'Your attendee NFT has been created and uploaded to Walrus.'
+                title: section === "edit" ? 'NFT Updated Successfully' : 'NFT Created Successfully',
+                description: section === "edit"
+                    ? 'NFT details updated and uploaded to Walrus.'
+                    : 'Your attendee NFT has been created and uploaded to Walrus.'
             })
         } catch (error) {
             console.error("Upload failed", error)
@@ -116,7 +151,9 @@ export function CreateNFTModal({ isOpen, setOpen, eventId, eventTitle, onSuccess
             <ModalWrapper open={isOpen} setOpen={(val) => !val && handleClose()}>
                 <div className="w-full min-w-[300px] md:w-[500px] max-w-[600px] text-white p-4">
                     <div className="mb-6">
-                        <h2 className="text-xl font-bold">Create Attendee NFT</h2>
+                        <h2 className="text-xl font-bold">
+                            {section === "edit" ? "Update Attendee NFT" : "Create Attendee NFT"}
+                        </h2>
                     </div>
 
                     <div className="py-2">
@@ -136,7 +173,7 @@ export function CreateNFTModal({ isOpen, setOpen, eventId, eventTitle, onSuccess
                                     <button
                                         onClick={handleGenerateAI}
                                         disabled={isGenerating}
-                                        className="flex flex-col items-center justify-center gap-4 p-8 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 hover:scale-105 transition-all cursor-pointer group"
+                                        className="flex flex-col items-center justify-center gap-4 p-8 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 hover:scale-105 transition-all cursor-pointer group disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                                     >
                                         {isGenerating ? (
                                             <Loader2 className="w-8 h-8 animate-spin text-purple-400" />
@@ -148,7 +185,7 @@ export function CreateNFTModal({ isOpen, setOpen, eventId, eventTitle, onSuccess
                                         <span className="font-semibold">{isGenerating ? 'Generating...' : 'Generate with AI'}</span>
                                     </button>
                                 </div>
-                                <Button type="button" variant="ghost" onClick={() => setOpen(false)} className="w-full mt-4 border border-white/20 text-white py-6! hover:bg-white/10 hover:text-white rounded-full cursor-pointer">
+                                <Button type="button" variant="ghost" onClick={() => setOpen(false)} className="w-full mt-4 border border-white/20 text-white py-6 hover:bg-white/10 hover:text-white rounded-full cursor-pointer">
                                     Close
                                 </Button>
                             </div>
@@ -166,7 +203,7 @@ export function CreateNFTModal({ isOpen, setOpen, eventId, eventTitle, onSuccess
                                         onChange={handleFileChange}
                                     />
                                 </div>
-                                <Button variant="ghost" onClick={() => setStep('select')} className="self-start gap-2 rounded-full py-4 px-6! cursor-pointer">
+                                <Button variant="ghost" onClick={() => setStep('select')} className="self-start gap-2 rounded-full py-4 px-6 cursor-pointer hover:bg-white/10">
                                     <ArrowLeft className="w-4 h-4" /> Back
                                 </Button>
                             </div>
@@ -183,7 +220,7 @@ export function CreateNFTModal({ isOpen, setOpen, eventId, eventTitle, onSuccess
                                         variant="outline"
                                         onClick={handleGenerateAI}
                                         disabled={isGenerating}
-                                        className="flex-1 rounded-full py-6 bg-transparent hover:bg-white/10 border border-white/20 text-white cursor-pointer hover:text-white"
+                                        className="flex-1 rounded-full py-6 bg-transparent hover:bg-white/10 border border-white/20 text-white cursor-pointer hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
                                         {isGenerating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <RefreshCw className="w-4 h-4 mr-2" />}
                                         Regenerate
@@ -196,7 +233,7 @@ export function CreateNFTModal({ isOpen, setOpen, eventId, eventTitle, onSuccess
                                         Use Image
                                     </Button>
                                 </div>
-                                <Button variant="ghost" onClick={() => setStep('select')} className="self-center w-full border border-white/20 text-white py-6! hover:bg-white/10 hover:text-white rounded-full cursor-pointer">
+                                <Button variant="ghost" onClick={() => setStep('select')} className="self-center w-full border border-white/20 text-white py-6 hover:bg-white/10 hover:text-white rounded-full cursor-pointer">
                                     Cancel
                                 </Button>
                             </div>
@@ -232,21 +269,21 @@ export function CreateNFTModal({ isOpen, setOpen, eventId, eventTitle, onSuccess
                                 </div>
 
                                 <div className="flex gap-3 pt-2">
-                                    <Button variant="ghost" onClick={() => setStep('select')} className="flex-1 rounded-full py-6 cursor-pointer">
+                                    <Button variant="ghost" onClick={() => setStep('select')} className="flex-1 rounded-full py-6 cursor-pointer hover:bg-white/10">
                                         Back
                                     </Button>
                                     <Button
                                         onClick={handleSubmit}
-                                        disabled={isUploading}
-                                        className="flex-1 bg-white text-black hover:bg-gray-200 rounded-full py-6 cursor-pointer"
+                                        disabled={isUploading || isSettingUp || isUpdating}
+                                        className="flex-1 bg-white text-black hover:bg-gray-200 rounded-full py-6 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
-                                        {isUploading ? (
+                                        {(isUploading || isSettingUp || isUpdating) ? (
                                             <>
                                                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                                Creating...
+                                                {isUploading ? "Uploading..." : section === "edit" ? "Updating..." : "Creating..."}
                                             </>
                                         ) : (
-                                            "Create NFT"
+                                            section === "edit" ? "Update NFT" : "Create NFT"
                                         )}
                                     </Button>
                                 </div>

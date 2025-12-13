@@ -4,19 +4,22 @@ import { useMutation } from "@tanstack/react-query";
 import { REGISTRY_PACKAGE_ID, HADATHA_MODULE, CLOCK_ID } from "@/lib/constant";
 
 interface EditEventParams {
-    event: string; // Event object ID
+    id: string; // Account object ID
     title: string;
     description: string;
     location: string;
     startTime: number;
     endTime: number;
     imageUrl: string;
+    registrationFieldNames: string[];
+    registrationFieldTypes: string[];
+    organizers: string[];
     maxAttendees: number;
     tags: string[];
     price: string;
 }
 
-export const useEditEventDetails = () => {
+export const useEditEvent = () => {
     const account = useCurrentAccount();
     const { mutateAsync: signAndExecuteTransaction } = useSignAndExecuteTransaction();
 
@@ -32,7 +35,7 @@ export const useEditEventDetails = () => {
                 tx.moveCall({
                     target: `${REGISTRY_PACKAGE_ID}::${HADATHA_MODULE}::edit_event`,
                     arguments: [
-                        tx.object(params.event),
+                        tx.object(params.id!),
                         tx.pure.string(params.title),
                         tx.pure.string(params.description),
                         tx.pure.string(params.location),
@@ -42,6 +45,7 @@ export const useEditEventDetails = () => {
                         tx.pure.u64(params.maxAttendees),
                         tx.pure.vector("string", params.tags),
                         tx.pure.string(params.price),
+                        tx.pure.vector("address", params.organizers),
                         tx.object(CLOCK_ID),
                     ],
                 });
@@ -50,17 +54,17 @@ export const useEditEventDetails = () => {
                     transaction: tx,
                 });
 
-                console.log('✅ Event details edited successfully:', result);
+                console.log('✅ Event edited successfully:', result);
                 return result;
             } catch (error) {
-                console.error('❌ Error editing event details:', error);
+                console.error('❌ Error editing event:', error);
                 throw error;
             }
         },
     });
 
     return {
-        editEventDetails: mutation.mutateAsync,
+        editEvent: mutation.mutateAsync,
         isEditing: mutation.isPending,
         error: mutation.error,
         reset: mutation.reset,

@@ -31,10 +31,9 @@ import { CustomFieldsBuilder } from "./create/CustomFieldsBuilder"
 export function EditEventForm({ isLoading }: { isLoading: boolean }) {
     const { control, setValue, watch } = useFormContext()
     const [imagePreview, setImagePreview] = useState<string | null>(
-        watch("imagePreviewUrl") || (typeof watch("image") === "string" ? watch("image") : null)
+        watch("imagePreviewUrl") || typeof watch("image") === "string" ? watch("image") : null
     )
-
-    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) =>    {
         const file = e.target.files?.[0]
         if (file) {
             const url = URL.createObjectURL(file)

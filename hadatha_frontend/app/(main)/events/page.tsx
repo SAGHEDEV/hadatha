@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import EventCard from "@/components/miscellneous/EventCard"
 import { Search, MapPin } from "lucide-react"
 import { useGetAllEventDetails } from "@/hooks/sui/useGetAllEvents"
@@ -9,6 +9,7 @@ import LoadingState from "@/components/miscellneous/LoadingState"
 const EventsPage = () => {
     const [activeCategory, setActiveCategory] = useState("All")
     const [activeLocation, setActiveLocation] = useState("All")
+    const [eventStatus, setEventStatus] = useState<"ongoing" | "past">("ongoing")
 
     const categories = ["All", "Tech", "Art", "Music", "Business", "Social"]
     const locations = ["All", "Online", "In-Person", "Nearest to me"]
@@ -16,6 +17,28 @@ const EventsPage = () => {
     const { events, isLoading, error } = useGetAllEventDetails(1000)
     console.log(events)
 
+    // Filter events based on status and visibility
+    const filteredEvents = useMemo(() => {
+        if (!events) return []
+
+        const now = new Date()
+
+        return events.filter((event) => {
+            // Filter out hidden events
+            if (event.status === "hidden") return false
+
+            // Filter by ongoing or past
+            // const eventEndTime = Number(event.end_time)
+
+            if (eventStatus === "ongoing") {
+                return new Date(event.start_time) <= new Date() && new Date(event.end_time) >= new Date()
+            } else {
+                return new Date(event.start_time) <= new Date() && new Date(event.end_time) <= new Date()
+            }
+        })
+    }, [events, eventStatus])
+
+    console.log("Filtered events:", filteredEvents)
 
     if (isLoading) {
         return (
@@ -39,6 +62,28 @@ const EventsPage = () => {
             <div className="flex flex-col gap-4">
                 <h1 className="text-4xl font-bold text-white">Explore Events</h1>
                 <p className="text-white/60 max-w-2xl">Discover the best events happening around you and online. Join the community and start connecting.</p>
+            </div>
+
+            {/* Event Status Toggle */}
+            <div className="flex gap-2 bg-white/5 backdrop-blur-md border border-white/10 p-2 rounded-full w-fit">
+                <button
+                    onClick={() => setEventStatus("ongoing")}
+                    className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${eventStatus === "ongoing"
+                        ? "bg-white text-black"
+                        : "text-white/60 hover:text-white"
+                        }`}
+                >
+                    Ongoing Events
+                </button>
+                <button
+                    onClick={() => setEventStatus("past")}
+                    className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${eventStatus === "past"
+                        ? "bg-white text-black"
+                        : "text-white/60 hover:text-white"
+                        }`}
+                >
+                    Past Events
+                </button>
             </div>
 
             {/* Filters Section */}
@@ -90,16 +135,20 @@ const EventsPage = () => {
             </div>
 
             {/* Events Grid */}
-            {events && events.length > 0 ? (
+            {filteredEvents && filteredEvents.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {events?.map((event) => (
+                    {filteredEvents.map((event) => (
                         <EventCard key={event.id} {...event} />
                     ))}
                 </div>
             ) : (
                 <div className="flex flex-col items-center justify-center py-20 text-white/40">
-                    <p className="text-xl">No events found</p>
-                    <p className="text-sm">Try adjusting your filters or check back later</p>
+                    <p className="text-xl">No {eventStatus} events found</p>
+                    <p className="text-sm">
+                        {eventStatus === "ongoing"
+                            ? "Try checking past events or adjusting your filters"
+                            : "Check back for upcoming events"}
+                    </p>
                 </div>
             )}
         </div>

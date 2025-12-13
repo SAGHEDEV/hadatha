@@ -191,16 +191,16 @@ export function RegistrationTable({ data, registrationFields = [] }: Registratio
                                         />
                                     </div>
                                 ) : (
-                                    <div className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center text-white text-xl">
+                                    <div className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center text-white text-lg">
                                         {selectedRegistration.user.name.charAt(0)}
                                     </div>
                                 )}
                                 <div className="flex-1">
-                                    <h3 className="text-xl font-bold text-white">{selectedRegistration.user.name}</h3>
-                                    <p className="text-white/60">{selectedRegistration.user.email}</p>
+                                    <h3 className="text-lg font-bold text-white">{selectedRegistration.user.name}</h3>
+                                    <p className="text-white/60 truncate max-w-[120px] lg:max-w-[240px]">{selectedRegistration.user.email}</p>
                                     {selectedRegistration.address && (
                                         <div className="flex items-center gap-2 mt-2">
-                                            <code className="text-xs bg-white/10 px-2 py-1 rounded text-white/80 truncate max-w-[240px]">
+                                            <code className="text-xs bg-white/10 px-2 py-1 rounded text-white/80 truncate max-w-[120px] lg:max-w-[240px]">
                                                 {selectedRegistration.address}
                                             </code>
                                             <button
@@ -263,7 +263,7 @@ export function RegistrationTable({ data, registrationFields = [] }: Registratio
                                         {Object.entries(selectedRegistration.registrationData).map(([key, value]) => (
                                             <div key={key} className="flex justify-between items-start py-2 border-b border-white/10 last:border-0">
                                                 <span className="text-white/60 text-sm">{key}</span>
-                                                <span className="text-white font-medium text-right max-w-[60%]">{value || 'N/A'}</span>
+                                                <span className="text-white font-medium text-right max-w-[60%] truncate">{value || 'N/A'}</span>
                                             </div>
                                         ))}
                                     </div>

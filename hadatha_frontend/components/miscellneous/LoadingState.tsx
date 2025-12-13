@@ -48,7 +48,7 @@ const LoadingState = ({ loadingText }: { loadingText: string }) => {
                     <motion.span
                         key={index}
                         variants={item}
-                        className="text-4xl font-bold text-white"
+                        className="text-2xl md:text-4xl font-bold text-white"
                     >
                         {letter === " " ? "\u00A0" : letter}
                     </motion.span>

@@ -9,13 +9,12 @@ import LaunchAppBtn from "@/components/miscellneous/LaunchAppBtn"
 import { useCurrentAccount } from "@mysten/dapp-kit"
 import { useParams, useRouter } from "next/navigation"
 import { useUploadToWalrus } from "@/hooks/useUploadToWalrus"
-import { useGetDerivedAddress } from "@/hooks/sui/useCheckAccountExistence"
-import { useState, useEffect, useMemo } from "react"
+import { useGetDerivedAddress, useGetDerivedAddresses } from "@/hooks/sui/useCheckAccountExistence"
+import { useState, useEffect, useMemo, useRef } from "react"
 import StatusModal from "@/components/miscellneous/StatusModal"
 import { useGetEventByIdWithAttendees } from "@/hooks/sui/useGetAllEvents"
 import { useEditEvent } from "@/hooks/sui/useEditEvent"
 import { EditEventForm } from "@/components/events/EditEventForm"
-import { useGetOrganizersByAddresses } from "@/hooks/sui/useGetOrganizersByAddresses"
 
 const eventSchema = z.object({
     title: z.string().min(2, "Title must be at least 2 characters"),
@@ -57,6 +56,9 @@ export default function EditEventPage() {
         type: "success" as "success" | "error"
     })
 
+    // Track if form has been initialized
+    const isFormInitialized = useRef(false)
+
     const methods = useForm<z.infer<typeof eventSchema>>({
         resolver: zodResolver(eventSchema),
         defaultValues: {
@@ -67,18 +69,18 @@ export default function EditEventPage() {
         },
     })
 
-       const organizerAddresses = useMemo(() => {
-            return Array.isArray(event?.organizers) ? event?.organizers : []
-        }, [event?.organizers])
-    
-        // Fetch organizer details
-        const derivedAddresses = organizerAddresses.map(org => org.address)
-        // const { organizers, isLoading: isLoadingOrganizers } = useGetDerivedAddress(organizerAddresses)
+    const organizerAddresses = useMemo(() => {
+        return Array.isArray(event?.organizers) ? event?.organizers.map(org => (org.address)) : []
+    }, [event?.organizers])
+    const derivedAddreess = useGetDerivedAddresses(organizerAddresses)
+    console.log(derivedAddreess)
 
-    // Populate form when event data is loaded
+    // Populate form when event data is loaded - FIX: Remove methods from dependencies
     useEffect(() => {
-        if (event && !isLoadingEvent) {
-            
+        // Only initialize form once when event loads
+        if (event && !isLoadingEvent && !isFormInitialized.current) {
+            console.log("Initializing form with event data:", event)
+
             // Convert timestamps to Date and time strings
             const eventDate = new Date(event.date)
             const startDateTime = new Date(event.start_time)
@@ -91,9 +93,10 @@ export default function EditEventPage() {
             const registrationFields = event.registration_fields?.map((field) => ({
                 label: field.name,
                 type: field.type,
-                // options: ""
+                options: ""
             })) || []
 
+            // Reset form with event data
             methods.reset({
                 title: event.title,
                 description: event.description,
@@ -102,19 +105,25 @@ export default function EditEventPage() {
                 startTime,
                 endTime,
                 image: event.imageUrl,
-                organizer: derivedAddresses || [],
+                imagePreviewUrl: event.imageUrl,
+                organizer: !derivedAddreess.isLoading ? derivedAddreess.derivedAddresses : [],
                 tags: event.tags || [],
                 ticketType: Number(event.price) === 0 ? "free" : "paid",
                 maxAttendees: event.maxAttendees || 0,
                 registrationFields,
             })
+
+            // Mark form as initialized
+            isFormInitialized.current = true
         }
-    }, [event, isLoadingEvent, methods])
+    }, [event?.id, isLoadingEvent, derivedAddreess.isLoading]) // Removed 'methods' from dependencies
 
     // Check if current user is an organizer
-    const isOrganizer = currentAccount && event?.organizers.some(
-        (org) => org.address === currentAccount?.address
-    )
+    const isOrganizer = useMemo(() => {
+        return currentAccount && event?.organizers.some(
+            (org) => org.address === currentAccount?.address
+        )
+    }, [currentAccount, event?.organizers])
 
     const onSubmit = async (data: z.infer<typeof eventSchema>) => {
         console.log("Form Data:", data)

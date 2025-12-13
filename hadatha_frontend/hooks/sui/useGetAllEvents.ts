@@ -70,7 +70,7 @@ const useGetEventIds = (refetchInterval?: number) => {
 
 // Get all event details
 export const useGetAllEventDetails = (refetchInterval?: number) => {
-    const { eventIds, isLoading: idsLoading, error: idsError, refetch: refetchIds } = useGetEventIds(refetchInterval);
+    const { eventIds, isLoading: idsLoading, refetch: refetchIds } = useGetEventIds(refetchInterval);
 
     // console.log('Event IDs for fetching:', { eventIds, idsLoading, idsError });
 

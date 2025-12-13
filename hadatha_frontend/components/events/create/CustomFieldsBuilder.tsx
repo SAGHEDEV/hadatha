@@ -29,7 +29,7 @@ export function CustomFieldsBuilder({ disabled }: { disabled?: boolean }) {
         control,
         name: "registrationFields",
     })
-
+    console.log(fields)
     const watchFieldTypes = watch("registrationFields")
 
     return (

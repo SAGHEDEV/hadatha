@@ -4,6 +4,7 @@ import { useCurrentAccount, useSuiClientQuery } from "@mysten/dapp-kit";
 import { bcs } from "@mysten/sui/bcs";
 import { deriveObjectID } from '@mysten/sui/utils';
 import { bytesToString } from "./useGetAllEvents";
+import { useEffect, useState } from "react";
 
 // Raw account fields as they come from the blockchain (strings are vector<u8>)
 interface RawAccountFields {
@@ -30,6 +31,53 @@ export const useGetDerivedAddress = (address?: string) => {
 
     return derivedAddress;
 }
+
+export function useGetDerivedAddresses(addresses: string[]) {
+    const [derived, setDerived] = useState<string[]>()
+    const [loading, setLoading] = useState(false)
+
+    useEffect(() => {
+        if (!addresses.length) return
+
+        let cancelled = false
+
+        const deriveAll = async () => {
+            setLoading(true)
+
+            try {
+                const results = await Promise.all(
+                    addresses.map(async (address) => {
+                        const derivedAddress =  deriveObjectID(
+                            ACCOUNT_ROOT_ID,
+                            'address',
+                            bcs.Address.serialize(address).toBytes(),
+                        )
+                        return derivedAddress
+                    })
+                )
+
+                if (!cancelled) {
+                    setDerived(results)
+                }
+            } finally {
+                if (!cancelled) setLoading(false)
+            }
+        }
+
+        deriveAll()
+
+        return () => {
+            cancelled = true
+        }
+    }, [addresses.join(",")]) // 👈 stable dependency
+
+    return {
+        derivedAddresses: derived,
+        isLoading: loading,
+    }
+}
+
+
 
 export const useCheckAccountExistence = (address?: string) => {
     const derivedAddress = useGetDerivedAddress();

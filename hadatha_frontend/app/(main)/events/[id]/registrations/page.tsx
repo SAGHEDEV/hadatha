@@ -27,6 +27,7 @@ const RegistrationList = () => {
 
     // Fetch event details and attendees with accounts
     const { event, isLoading: eventLoading } = useGetEventById(eventId)
+
     const {
         attendees,
         isLoading: attendeesLoading,
@@ -34,6 +35,7 @@ const RegistrationList = () => {
         summary,
         error: attendeesError
     } = useGetEventAttendeesWithAccounts(eventId)
+    console.log(attendees)
 
     const isLoading = eventLoading || attendeesLoading
 

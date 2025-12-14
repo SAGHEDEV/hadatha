@@ -221,6 +221,7 @@ export const useGetAllEventDetails = (refetchInterval?: number) => {
                 const content = obj.data?.content as any;
                 const fields = content.fields;
                 // console.log('Parsing event fields:', fields);
+                console.log(fields.organizers)
 
                 // Parse organizers with account info
                 const organizers = (fields.organizers as string[]).map((address: string) => {
@@ -306,11 +307,13 @@ export const useGetEventById = (eventId: string, refetchInterval?: number) => {
     );
 
     console.log('Single event query result:', { data, isLoading, error });
+    console.log('Event data content:', data?.data?.content);
 
     // Extract organizer addresses
     const organizerAddresses = data?.data?.content?.dataType === "moveObject"
         ? ((data.data.content as any).fields.organizers as string[])
         : [];
+    console.log(organizerAddresses)
 
     console.log('Organizer addresses from event:', organizerAddresses);
 

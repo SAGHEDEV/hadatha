@@ -23,7 +23,7 @@ const MainLayout = ({
         if (currentAccount?.address && !hasAccount) {
             router.push(`/create-account?redirect=${pathname}`)
         }
-    }, [currentAccount?.address, hasAccount, pathname])
+    }, [currentAccount?.address, hasAccount])
 
     if (isLoading) return <LoadingState loadingText="Checking account status..." />
     return (

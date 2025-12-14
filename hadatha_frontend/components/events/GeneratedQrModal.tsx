@@ -1,11 +1,10 @@
 "use client"
 
-import { useRef } from "react";
+import { useRef, useEffect } from "react";
 import ModalWrapper from "../miscellneous/ModalWrapper";
 import { Button } from "../ui/button";
 import { Download } from "lucide-react";
 import QRCodeStyling from "qr-code-styling";
-import { useEffect } from "react";
 
 const GeneratedQrModal = ({
     open,
@@ -22,7 +21,8 @@ const GeneratedQrModal = ({
     const qrCode = useRef<QRCodeStyling | null>(null);
 
     useEffect(() => {
-        if (open && qrRef.current && !qrCode.current) {
+        // Initialize QR code instance only once
+        if (!qrCode.current) {
             qrCode.current = new QRCodeStyling({
                 width: 300,
                 height: 300,
@@ -54,14 +54,16 @@ const GeneratedQrModal = ({
                     color: "#10b981"
                 }
             });
-
-            qrCode.current.append(qrRef.current);
         }
 
-        if (open && qrCode.current) {
-            qrCode.current.update({
-                data: eventId
-            });
+        // Append QR code to DOM when modal opens
+        if (open && qrRef.current && qrCode.current) {
+            // Clear any existing content first
+            qrRef.current.innerHTML = '';
+            
+            // Update data and append
+            qrCode.current.update({ data: eventId });
+            qrCode.current.append(qrRef.current);
         }
     }, [open, eventId]);
 

@@ -37,7 +37,7 @@ const Dashboard = () => {
         },
         {
             title: "Missed Events",
-            value: Number(account?.total_registered) - Number(account?.total_attended) || "0",
+            value:  "0",
             icon: AlertCircle,
             description: "Registered but didn't attend",
             trend: "-1 this month"

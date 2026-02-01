@@ -1,11 +1,13 @@
 import { useCurrentAccount, useSignAndExecuteTransaction } from "@mysten/dapp-kit";
 import { Transaction } from "@mysten/sui/transactions";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { REGISTRY_PACKAGE_ID, HADATHA_MODULE, ACCOUNT_ROOT_ID } from "@/lib/constant";
 
 export const useCreateAccount = () => {
     const account = useCurrentAccount();
     const { mutateAsync: signAndExecuteTransaction } = useSignAndExecuteTransaction();
+
+    const queryClient = useQueryClient();
 
     const mutation = useMutation({
         mutationFn: async ({ name, email, image_url }: { name: string, email: string, image_url: string }) => {
@@ -37,6 +39,9 @@ export const useCreateAccount = () => {
                 throw error;
             }
         },
+        onSuccess: () => {
+            queryClient.invalidateQueries();
+        }
     });
 
     return {

@@ -14,7 +14,7 @@ import LoadingState from "@/components/miscellneous/LoadingState"
 import { useCreateAccount } from "@/hooks/sui/useCreateAccount"
 import { useUploadToWalrus } from "@/hooks/useUploadToWalrus"
 import StatusModal from "@/components/miscellneous/StatusModal"
-import { useCurrentAccount } from "@mysten/dapp-kit"
+import { useCurrentAccount, useDisconnectWallet } from "@mysten/dapp-kit"
 
 const formSchema = z.object({
     image_url: z
@@ -29,6 +29,7 @@ type FormValues = z.infer<typeof formSchema>
 const CreateAccountForm = () => {
     const [imagePreview, setImagePreview] = useState<string | null>(null)
     const currentAccount = useCurrentAccount();
+    const { mutate: disconnect } = useDisconnectWallet();
     const router = useRouter()
     const { hasAccount, isLoading } = useCheckAccountExistence();
     const { createAccount, isCreating } = useCreateAccount();
@@ -179,6 +180,19 @@ const CreateAccountForm = () => {
                         {isSubmitting || isUploading || isCreating ? "Creating..." : "Create Account"}
                     </Button>
                 </form>
+
+                <div className="flex justify-center">
+                    <button
+                        type="button"
+                        onClick={() => {
+                            disconnect();
+                            router.push("/");
+                        }}
+                        className="text-white/40 hover:text-white text-sm transition-colors"
+                    >
+                        Disconnect & Exit
+                    </button>
+                </div>
             </div>
             <StatusModal isOpen={openEffectModal.open}
                 onClose={() => setOpenEffectModal({ open: false, status: "success", message: "", description: "" })}

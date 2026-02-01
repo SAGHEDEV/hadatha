@@ -1,7 +1,7 @@
 import { ACCOUNT_ROOT_ID } from "@/lib/constant";
 import { useSuiClientQuery } from "@mysten/dapp-kit";
 import { bcs } from "@mysten/sui/bcs";
-import { deriveObjectID } from "@mysten/sui/utils";
+import { deriveObjectID, normalizeSuiAddress } from "@mysten/sui/utils";
 import { bytesToString } from "./useGetEventAttendees";
 
 interface OrganizerDetails {
@@ -12,31 +12,31 @@ interface OrganizerDetails {
 
 export const useGetOrganizersByAddresses = (addresses: string[]) => {
     // Keep track of which addresses succeeded
-    // const addressIdMap = addresses.map(address => {
-    //     try {
-    //         const id = deriveObjectID(
-    //             ACCOUNT_ROOT_ID,
-    //             'address',
-    //             bcs.Address.serialize(address).toBytes(),
-    //         );
-    //         return { address, id };
-    //     } catch (error) {
-    //         console.error(`Failed to derive ID for address ${address}:`, error);
-    //         return { address, id: null };
-    //     }
-    // });
+    const addressIdMap = addresses.map(address => {
+        try {
+            const id = deriveObjectID(
+                ACCOUNT_ROOT_ID,
+                'address',
+                bcs.Address.serialize(normalizeSuiAddress(address)).toBytes(),
+            );
+            return { address, id };
+        } catch (error) {
+            console.error(`Failed to derive ID for address ${address}:`, error);
+            return { address, id: null };
+        }
+    });
 
-    // const derivedIds = addressIdMap
-    //     .filter(item => item.id !== null)
-    //     .map(item => item.id!);
+    const derivedIds = addressIdMap
+        .filter(item => item.id !== null)
+        .map(item => item.id!);
 
     const { data, isLoading, error } = useSuiClientQuery(
         "multiGetObjects",
         {
-            ids: addresses,
+            ids: derivedIds,
             options: { showContent: true }
         },
-        { enabled: addresses.length > 0 }
+        { enabled: derivedIds.length > 0 }
     );
 
     // Map back to original addresses
@@ -50,7 +50,17 @@ export const useGetOrganizersByAddresses = (addresses: string[]) => {
             };
         }
 
-        const dataIndex = addresses.indexOf(address);
+        // Find the derived ID for this address
+        const mapEntry = addressIdMap.find(m => m.address === address);
+        if (!mapEntry?.id) {
+            return {
+                name: address.slice(0, 6) + "..." + address.slice(-4),
+                avatarUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=" + address,
+                address: address,
+            };
+        }
+
+        const dataIndex = derivedIds.indexOf(mapEntry.id);
         const accountObject = data?.[dataIndex];
 
         if (!accountObject?.data?.content || accountObject.data.content.dataType !== "moveObject") {

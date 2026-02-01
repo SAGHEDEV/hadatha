@@ -12,6 +12,7 @@ interface RawAccountFields {
     name: number[];
     email: number[];
     image_url: number[];
+    owner: number[];
     total_attended: string | number;
     total_organized: string | number;
     total_hosted: string | number;
@@ -47,7 +48,7 @@ export function useGetDerivedAddresses(addresses: string[]) {
             try {
                 const results = await Promise.all(
                     addresses.map(async (address) => {
-                        const derivedAddress =  deriveObjectID(
+                        const derivedAddress = deriveObjectID(
                             ACCOUNT_ROOT_ID,
                             'address',
                             bcs.Address.serialize(address).toBytes(),
@@ -96,7 +97,8 @@ export const useCheckAccountExistence = (address?: string) => {
         },
         {
             enabled: !!addressToFind,
-            retry: false
+            retry: false,
+            staleTime: 1000 * 60 * 5, // 5 minutes
         }
     );
 
@@ -119,7 +121,7 @@ export const useCheckAccountExistence = (address?: string) => {
     }
     const accountDetails: AccountDetails = {
         id: rawAccountFields.id.id,
-        address: addressToFind || "",
+        address: bytesToString(rawAccountFields.owner) || "",
         name: bytesToString(rawAccountFields.name),
         email: bytesToString(rawAccountFields.email),
         image_url: bytesToString(rawAccountFields.image_url),

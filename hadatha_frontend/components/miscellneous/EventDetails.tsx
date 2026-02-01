@@ -8,25 +8,19 @@ import {
     Globe,
     MapPin,
     Share2,
-    Edit,
     Users,
-    Image as ImageIcon,
-    QrCode,
-    Settings,
     CheckCircle,
+    Settings,
 } from "lucide-react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { RegistrationModal } from "@/components/events/RegistrationModal";
 import Link from "next/link";
 import CheckInModal from "../events/CheckinModal";
-import { CreateNFTModal } from "../events/CreateNFTModal";
-import GeneratedQrModal from "../events/GeneratedQrModal";
 import ShareModal from "./ShareModal";
 import { useCurrentAccount } from "@mysten/dapp-kit";
+import { normalizeSuiAddress } from "@mysten/sui/utils";
 import { useGetDerivedAddress } from "@/hooks/sui/useCheckAccountExistence";
-import { useToggleAllowCheckin } from "@/hooks/sui/useCheckin";
-import StatusModal from "./StatusModal";
 import { useRouter } from "next/navigation";
 import { useMintAttendanceNFT } from "@/hooks/sui/useMintAttendeeNFT";
 
@@ -69,21 +63,9 @@ const EventDetails = ({
 }) => {
     const [isRegistrationModalOpen, setIsRegistrationModalOpen] = useState(false);
     const [isCheckInModalOpen, setIsCheckInModalOpen] = useState(false);
-    const [isCreateNFTModalOpen, setIsCreateNFTModalOpen] = useState({
-        open: false,
-        section: "create" as "create" | "edit"
-    });
-    const [isGeneratedQrModalOpen, setIsGeneratedQrModalOpen] = useState(false);
     const [isShareModalOpen, setIsShareModalOpen] = useState(false);
     const currentAccount = useCurrentAccount();
     const derivedAddress = useGetDerivedAddress(currentAccount?.address);
-    const [actionEffect, setActionEffect] = useState({
-        open: false,
-        type: "success" as "success" | "error",
-        title: "",
-        description: "",
-    });
-    const { toggleAllowCheckin, isToggling } = useToggleAllowCheckin();
     const { mintNFT, isMinting } = useMintAttendanceNFT();
     const router = useRouter();
 
@@ -92,7 +74,7 @@ const EventDetails = ({
     // Check if current user is an organizer
     const isOrganizer =
         currentAccount &&
-        event?.organizers.some((org) => org.address === currentAccount?.address);
+        event?.organizers.some((org) => normalizeSuiAddress(org.address) === normalizeSuiAddress(currentAccount?.address));
 
     // Check if user is already registered
     const isRegistered =
@@ -445,100 +427,20 @@ const EventDetails = ({
                             <div className="flex items-center gap-3 pb-3 border-b border-white/10">
                                 <Settings className="w-5 h-5 text-white/80" />
                                 <h2 className="text-xl font-bold text-white">
-                                    Organizer Settings
+                                    Organizer Actions
                                 </h2>
                             </div>
 
-                            <div className="grid grid-cols-1 gap-3">
-                                <Button
-                                    className="w-full rounded-xl py-6 text-base font-medium bg-white/10 text-white border border-white/10 hover:bg-white/20 hover:border-white/30 transition-all cursor-pointer justify-start px-4"
-                                    disabled={hasEventEnded}
-                                    onClick={() => router.push(`/events/${event.id}/edit`)}
-                                >
-                                    <Edit className="w-4 h-4 mr-3 text-blue-400" />
-                                    Edit Event Details
-                                </Button>
+                            <p className="text-white/60 text-sm">
+                                Manage registrations, check-in attendees, and update event details.
+                            </p>
 
-                                <Link
-                                    href={`/events/${event.id}/registrations`}
-                                    className="w-full rounded-xl py-3 text-base font-medium bg-white/10 text-white border border-white/10 hover:bg-white/20 hover:border-white/30 transition-all cursor-pointer flex items-center justify-start px-4"
-                                >
-                                    <Users className="w-4 h-4 mr-3 text-green-400" />
-                                    View Registrations ({event.attendeesCount || 0})
-                                </Link>
-
-                                {event.nft_config?.enabled ? (
-                                    <Button
-                                        className="w-full rounded-xl py-6 text-base font-medium bg-white/10 text-white border border-white/10 hover:bg-white/20 hover:border-white/30 transition-all cursor-pointer justify-start px-4"
-                                        onClick={() => setIsCreateNFTModalOpen({ open: true, section: "edit" })}
-                                    >
-                                        <ImageIcon className="w-4 h-4 mr-3 text-purple-400" />
-                                        Update Attendance NFT
-                                    </Button>
-                                ) : (
-                                    <Button
-                                        className="w-full rounded-xl py-6 text-base font-medium bg-white/10 text-white border border-white/10 hover:bg-white/20 hover:border-white/30 transition-all cursor-pointer justify-start px-4"
-                                        onClick={() => setIsCreateNFTModalOpen({ open: true, section: "create" })}
-                                    >
-                                        <ImageIcon className="w-4 h-4 mr-3 text-purple-400" />
-                                        Setup Attendance NFT
-                                    </Button>
-                                )}
-
-                                <Button
-                                    className="w-full rounded-xl py-6 text-base font-medium bg-white/10 text-white border border-white/10 hover:bg-white/20 hover:border-white/30 transition-all cursor-pointer justify-start px-4"
-                                    onClick={() => setIsGeneratedQrModalOpen(true)}
-                                >
-                                    <QrCode className="w-4 h-4 mr-3 text-yellow-400" />
-                                    Check-in QR Code
-                                </Button>
-
-                                <p className="pb-4 border-b border-white/10">
-                                    Check-in Settings
-                                </p>
-                                <Button
-                                    className={`w-full py-6 text-base font-medium text-center rounded-full ${event.allowCheckin
-                                        ? "bg-red-600 text-white hover:bg-red-400"
-                                        : "bg-green-600 text-white hover:bg-green-400"
-                                        } transition-all cursor-pointer justify-center px-4 ${isToggling ? "opacity-50 cursor-not-allowed" : ""
-                                        }`}
-                                    onClick={async () => {
-                                        try {
-                                            await toggleAllowCheckin(event.id);
-                                            setActionEffect({
-                                                open: true,
-                                                title: event.allowCheckin
-                                                    ? "Check-in Disabled"
-                                                    : "Check-in Enabled",
-                                                description: event.allowCheckin
-                                                    ? "Attendees can no longer check in"
-                                                    : "Attendees can now check in to the event",
-                                                type: "success",
-                                            });
-                                        } catch (error) {
-                                            console.log(error);
-                                            setActionEffect({
-                                                open: true,
-                                                title: "An error occurred",
-                                                description: "Failed to toggle check-in settings",
-                                                type: "error",
-                                            });
-                                        }
-                                    }}
-                                    disabled={isToggling || hasEventEnded}
-                                >
-                                    {isToggling
-                                        ? "Updating..."
-                                        : event.allowCheckin
-                                            ? "Disable Check-in"
-                                            : "Enable Check-in"}
-                                </Button>
-                            </div>
                             <Button
-                                disabled={preview}
-                                className="w-full rounded-full py-6 text-lg font-semibold bg-red-700 text-white hover:bg-red-600 active:scale-95 transition-all hover:scale-105 cursor-pointer"
+                                className="w-full rounded-xl py-6 text-base font-semibold bg-white text-black hover:bg-gray-200 active:scale-95 transition-all cursor-pointer"
+                                onClick={() => router.push(`/events/${event.id}/manage`)}
                             >
-                                Hide Event
+                                <Settings className="w-4 h-4 mr-2" />
+                                Manage Event
                             </Button>
                         </div>
                     )}
@@ -556,43 +458,10 @@ const EventDetails = ({
                 isOpen={isRegistrationModalOpen}
                 setIsOpen={setIsRegistrationModalOpen}
             />
-            <CreateNFTModal
-                eventTitle={event.title}
-                eventId={event.id}
-                onSuccess={() => {
-                    setIsCreateNFTModalOpen({ open: false, section: "create" });
-                    // Optionally refresh event data here
-                }}
-                isOpen={isCreateNFTModalOpen.open}
-                setOpen={(val) => setIsCreateNFTModalOpen({ open: val, section: "create" })}
-                section={isCreateNFTModalOpen.section}
-                initialNFT={
-                    isCreateNFTModalOpen.section === "edit" && event.nft_config?.enabled
-                        ? {
-                            nftName: event.nft_config.nft_name,
-                            nftDescription: event.nft_config.nft_description,
-                            nftImageUrl: event.nft_config.nft_image_url
-                        }
-                        : undefined
-                }
-            />
-            <GeneratedQrModal
-                title={event.title}
-                open={isGeneratedQrModalOpen}
-                setOpen={setIsGeneratedQrModalOpen}
-                eventId={event.id}
-            />
             <ShareModal
                 event={event}
                 open={isShareModalOpen}
                 setOpen={setIsShareModalOpen}
-            />
-            <StatusModal
-                isOpen={actionEffect.open}
-                onClose={() => setActionEffect((prev) => ({ ...prev, open: false }))}
-                type={actionEffect.type}
-                title={actionEffect.title}
-                description={actionEffect.description}
             />
         </div>
     );

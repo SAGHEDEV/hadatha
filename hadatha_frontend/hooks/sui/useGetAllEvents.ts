@@ -2,7 +2,7 @@
 import { useSuiClientQuery } from "@mysten/dapp-kit";
 import { SuiObjectResponse } from "@mysten/sui/client";
 import { REGISTRY_PACKAGE_ID, HADATHA_MODULE, ACCOUNT_ROOT_ID } from "@/lib/constant";
-import { deriveObjectID } from '@mysten/sui/utils';
+import { deriveObjectID, normalizeSuiAddress } from '@mysten/sui/utils';
 import { bcs } from "@mysten/sui/bcs";
 import { Event } from "@/types";
 import { AttendeeDetails, useGetEventAttendees } from "./useGetEventAttendees";
@@ -122,7 +122,7 @@ export const useGetAllEventDetails = (refetchInterval?: number) => {
             const derivedId = deriveObjectID(
                 ACCOUNT_ROOT_ID,
                 'address',
-                bcs.Address.serialize(address).toBytes(),
+                bcs.Address.serialize(normalizeSuiAddress(address)).toBytes(),
             );
             accountIdsWithIndex.push({ id: derivedId, address, index });
             // console.log(`Derived account ID for ${address}:`, derivedId);
@@ -324,7 +324,7 @@ export const useGetEventById = (eventId: string, refetchInterval?: number) => {
             const derivedId = deriveObjectID(
                 ACCOUNT_ROOT_ID,
                 'address',
-                bcs.Address.serialize(address).toBytes(),
+                bcs.Address.serialize(normalizeSuiAddress(address)).toBytes(),
             );
             accountIdsWithAddress.push({ id: derivedId, address });
             console.log(`Derived account ID for ${address}:`, derivedId);

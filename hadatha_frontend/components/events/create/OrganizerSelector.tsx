@@ -61,7 +61,7 @@ export function OrganizerSelector({ value = [], onChange, disabled }: OrganizerS
                         <div className="flex flex-wrap gap-1">
                             {value.length > 0 ? (
                                 value.map((val) => {
-                                    const account = accounts.find((a) => a.id === val)
+                                    const account = accounts.find((a) => a.address === val)
                                     return (
                                         <Badge key={val} variant="secondary" className="mr-1 bg-white/20 text-white hover:bg-white/30 pl-1 pr-2 py-1 gap-2">
                                             {account && (
@@ -102,7 +102,7 @@ export function OrganizerSelector({ value = [], onChange, disabled }: OrganizerS
                                     <CommandItem
                                         key={account.id}
                                         value={account.name} // Search by name
-                                        onSelect={() => handleSelect(account.id)} // Select by ID
+                                        onSelect={() => handleSelect(account.address)} // Select by ID
                                         className="text-white hover:bg-white/10 aria-selected:bg-white/10 cursor-pointer"
                                     >
                                         <Check

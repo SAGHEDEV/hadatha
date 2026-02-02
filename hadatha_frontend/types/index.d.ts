@@ -26,10 +26,15 @@ export interface Event {
     maxAttendees?: number;
     tags?: string[];
     status?: string;
-    price?: string;
+    ticket_tiers?: TicketTier[];
     allowCheckin?: boolean;
     checkedInCount?: number;
     nft_config?: NFTConfig;
+}
+
+export interface TicketTier {
+    name: string;
+    price: string;
 }
 
 export type RegistrationStatus = "registered" | "checked-in" | "cancelled";

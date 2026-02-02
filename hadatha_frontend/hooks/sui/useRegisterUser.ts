@@ -8,7 +8,7 @@ export const useRegisterUser = () => {
     const { mutateAsync: signAndExecuteTransaction } = useSignAndExecuteTransaction();
 
     const mutation = useMutation({
-        mutationFn: async ({ event, account: accountId, registrationValues }: { event: string, account: string, registrationValues: string[] }) => {
+        mutationFn: async ({ event, account: accountId, registrationValues, tierIndex, price }: { event: string, account: string, registrationValues: string[], tierIndex: number, price: number }) => {
             if (!account) {
                 throw new Error('Wallet not connected');
             }
@@ -16,12 +16,17 @@ export const useRegisterUser = () => {
             try {
                 const tx = new Transaction();
 
+                // Split Coin for Payment (Price in MIST)
+                const [payment] = tx.splitCoins(tx.gas, [tx.pure.u64(price)]);
+
                 tx.moveCall({
                     target: `${REGISTRY_PACKAGE_ID}::${HADATHA_MODULE}::register_for_event`,
                     arguments: [
                         tx.object(event),
                         tx.object(accountId),
                         tx.pure.vector("string", registrationValues),
+                        tx.pure.u64(tierIndex),
+                        payment,
                         tx.object(CLOCK_ID),
                     ],
                 });

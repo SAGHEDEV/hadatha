@@ -25,10 +25,17 @@ const eventSchema = z.object({
     organizer: z.array(z.string()).optional(),
     tags: z.array(z.string()).optional(),
     location: z.string().min(2, "Location is required"),
+    location_lat: z.number().optional(),
+    location_lng: z.number().optional(),
     date: z.date({ error: "Date is required" }),
     startTime: z.string().min(1, "Start time is required"),
     endTime: z.string().min(1, "End time is required"),
     ticketType: z.enum(["free", "paid"]),
+    ticketTiers: z.array(z.object({
+        name: z.string().min(1, "Tier name is required"),
+        price: z.string().min(1, "Price is required"),
+        currency: z.enum(["SUI", "USDT"])
+    })).optional(),
     maxAttendees: z.number().min(1, "Must have at least 1 attendee"),
     registrationFields: z.array(
         z.object({
@@ -49,6 +56,7 @@ export default function CreateEventPage() {
             registrationFields: [],
             organizer: [],
             tags: [],
+            ticketTiers: []
         },
     })
     const { uploadToWalrus, isUploading } = useUploadToWalrus();
@@ -95,6 +103,23 @@ export default function CreateEventPage() {
             console.log(registrationFieldNames)
             console.log(registrationFieldTypes)
 
+            // Prepare Tags (include lat/lng)
+            const submissionTags = [...(data.tags || [])];
+            if (data.location_lat && data.location_lng) {
+                submissionTags.push(`lat:${data.location_lat}`);
+                submissionTags.push(`lng:${data.location_lng}`);
+            }
+
+            // Prepare Tiers
+            let tierNames: string[] = [];
+            let tierPrices: string[] = [];
+
+            if (data.ticketType === "paid" && data.ticketTiers && data.ticketTiers.length > 0) {
+                tierNames = data.ticketTiers.map(t => t.name);
+                // Convert SUI to MIST (1 SUI = 10^9 MIST)
+                tierPrices = data.ticketTiers.map(t => Math.floor(parseFloat(t.price) * 1_000_000_000).toString());
+            }
+
             await createEvent({
                 account: derivedAddress,
                 title: data.title,
@@ -107,8 +132,9 @@ export default function CreateEventPage() {
                 registrationFieldTypes,
                 organizers: data.organizer || [],
                 maxAttendees: data.maxAttendees,
-                tags: data.tags || [],
-                price: data.ticketType === "free" ? "0" : "0", // Default to 0 for now as paid is disabled
+                tags: submissionTags,
+                tierNames,
+                tierPrices,
             });
 
             setOpenEffectModal({ open: true, title: "Event Created Successfully!", message: "Event Created Successfully!", type: "success" })

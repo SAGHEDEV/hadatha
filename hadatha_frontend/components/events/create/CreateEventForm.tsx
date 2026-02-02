@@ -1,7 +1,7 @@
 "use client"
 
 import { useFormContext } from "react-hook-form"
-import { CalendarIcon, Upload, MapPin, Clock } from "lucide-react"
+import { CalendarIcon, Upload, Clock } from "lucide-react"
 import { format } from "date-fns"
 
 import { cn } from "@/lib/utils"
@@ -25,6 +25,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { OrganizerSelector } from "./OrganizerSelector"
 import { CustomFieldsBuilder } from "./CustomFieldsBuilder"
 import { TagMultiSelect } from "./TagMultiSelect"
+import { TicketTierSelector } from "./TicketTierSelector"
+import { LocationPicker } from "./LocationPicker"
 import { useState } from "react"
 import Image from "next/image"
 
@@ -151,22 +153,29 @@ export function CreateEventForm({ isLoading }: { isLoading: boolean }) {
                         )}
                     />
 
-                    <FormField
-                        control={control}
-                        name="location"
-                        render={({ field }) => (
-                            <FormItem className="col-span-2">
-                                <FormLabel className="text-white">Location</FormLabel>
-                                <FormControl>
-                                    <div className="relative">
-                                        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50" />
-                                        <Input disabled={isLoading} placeholder="Event location" {...field} value={field.value ?? ''} className="pl-10  bg-white/5 border-white/10 text-white placeholder:text-white/40 focus:border-white/30 h-12" />
-                                    </div>
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
+                    <div className="col-span-2">
+                        <FormField
+                            control={control}
+                            name="location"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel className="text-white">Location</FormLabel>
+                                    <FormControl>
+                                        <LocationPicker
+                                            value={field.value}
+                                            onLocationSelect={(address, lat, lng) => {
+                                                field.onChange(address)
+                                                setValue("location_lat", lat)
+                                                setValue("location_lng", lng)
+                                            }}
+                                            disabled={isLoading}
+                                        />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -277,10 +286,10 @@ export function CreateEventForm({ isLoading }: { isLoading: boolean }) {
                                     </FormItem>
                                     <FormItem className="flex items-center space-x-3 space-y-0">
                                         <FormControl>
-                                            <RadioGroupItem value="paid" disabled className="border-white/30 text-white/30" />
+                                            <RadioGroupItem value="paid" className="border-white text-white" />
                                         </FormControl>
-                                        <FormLabel className="font-normal text-white/50">
-                                            Paid Event (Coming Soon)
+                                        <FormLabel className="font-normal text-white">
+                                            Paid Event
                                         </FormLabel>
                                     </FormItem>
                                 </RadioGroup>
@@ -290,12 +299,32 @@ export function CreateEventForm({ isLoading }: { isLoading: boolean }) {
                     )}
                 />
 
+                {watch("ticketType") === "paid" && (
+                    <FormField
+                        control={control}
+                        name="ticketTiers"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel className="text-white">Ticket Tiers</FormLabel>
+                                <FormControl>
+                                    <TicketTierSelector
+                                        value={field.value || []}
+                                        onChange={field.onChange}
+                                        disabled={isLoading}
+                                    />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                )}
+
                 <FormField
                     control={control}
                     name="maxAttendees"
                     render={({ field }) => (
                         <FormItem>
-                            <FormLabel className="text-white">Maximum Attendees</FormLabel>
+                            <FormLabel className="text-white">Maximum Attendees (Total)</FormLabel>
                             <FormControl>
                                 <Input
                                     disabled={isLoading}

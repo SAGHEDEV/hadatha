@@ -17,7 +17,8 @@ interface CreateEventParams {
     organizers: string[];
     maxAttendees: number;
     tags: string[];
-    price: string;
+    tierNames: string[];
+    tierPrices: string[];
 }
 
 export const useCreateEvent = () => {
@@ -50,7 +51,8 @@ export const useCreateEvent = () => {
                         tx.pure.vector("address", params.organizers),
                         tx.pure.u64(params.maxAttendees),
                         tx.pure.vector("string", params.tags),
-                        tx.pure.string(params.price),
+                        tx.pure.vector("string", params.tierNames),
+                        tx.pure.vector("u64", params.tierPrices),
                         tx.object(CLOCK_ID),
                     ],
                 });

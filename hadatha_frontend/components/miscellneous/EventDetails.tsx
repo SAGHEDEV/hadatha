@@ -15,7 +15,6 @@ import {
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { RegistrationModal } from "@/components/events/RegistrationModal";
-import Link from "next/link";
 import CheckInModal from "../events/CheckinModal";
 import ShareModal from "./ShareModal";
 import { useCurrentAccount } from "@mysten/dapp-kit";
@@ -23,6 +22,7 @@ import { normalizeSuiAddress } from "@mysten/sui/utils";
 import { useGetDerivedAddress } from "@/hooks/sui/useCheckAccountExistence";
 import { useRouter } from "next/navigation";
 import { useMintAttendanceNFT } from "@/hooks/sui/useMintAttendeeNFT";
+import { EventMap } from "../events/EventMap";
 
 // Helper function to format date
 export const formatDate = (dateString: string): string => {
@@ -69,8 +69,6 @@ const EventDetails = ({
     const { mintNFT, isMinting } = useMintAttendanceNFT();
     const router = useRouter();
 
-    console.log(event);
-
     // Check if current user is an organizer
     const isOrganizer =
         currentAccount &&
@@ -102,11 +100,17 @@ const EventDetails = ({
     const isEventFull =
         (event?.attendeesCount || 0) >= (event?.maxAttendees || 0);
 
-    // Check if event has started
-    // const hasEventStarted = new Date(event.start_time) <= new Date();
-
     // Check if event has ended
     const hasEventEnded = new Date(event.end_time) <= new Date();
+
+    // Parse Coordinates
+    const latTag = event.tags?.find(tag => tag.startsWith("lat:"))
+    const lngTag = event.tags?.find(tag => tag.startsWith("lng:"))
+    const latitude = latTag ? parseFloat(latTag.split(":")[1]) : null
+    const longitude = lngTag ? parseFloat(lngTag.split(":")[1]) : null
+
+    // Ticket Tiers
+    const ticketTiers = event.ticket_tiers || []
 
     return (
         <div className="flex flex-col gap-8">
@@ -169,12 +173,20 @@ const EventDetails = ({
                         </p>
                     </div>
 
+                    {/* Event Map */}
+                    {latitude && longitude && (
+                        <div className="flex flex-col gap-4">
+                            <h2 className="text-2xl font-bold text-white">Location Map</h2>
+                            <EventMap lat={latitude} lng={longitude} className="h-[300px]" />
+                        </div>
+                    )}
+
                     {/* Tags */}
                     {event.tags && event.tags.length > 0 && (
                         <div className="flex flex-col gap-4">
                             <h2 className="text-2xl font-bold text-white">Tags</h2>
                             <div className="flex flex-wrap gap-2">
-                                {event.tags.map((tag, index) => (
+                                {event.tags.filter(tag => !tag.startsWith("lat:") && !tag.startsWith("lng:")).map((tag, index) => (
                                     <span
                                         key={index}
                                         className="px-4 py-2 rounded-full bg-white/5 border border-white/10 text-white/80 text-sm"
@@ -297,9 +309,20 @@ const EventDetails = ({
                                 </div>
                                 <div className="flex flex-col">
                                     <span className="text-white/60 text-sm">Price</span>
-                                    <span className="text-white font-medium text-xl">
-                                        {Number(event.price) == 0 || event.price == "free" ? "Free" : event.price}
-                                    </span>
+                                    {ticketTiers.length > 0 ? (
+                                        <div className="flex flex-col gap-2 mt-2">
+                                            {ticketTiers.map((tier, i) => (
+                                                <div key={i} className="flex justify-between items-center text-sm bg-white/5 p-2 rounded-lg border border-white/5">
+                                                    <span className="text-white/80">{tier.name}</span>
+                                                    <span className="text-amber-400 font-mono font-medium">
+                                                        {(Number(tier.price) / 1_000_000_000).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 9 })} SUI
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <span className="text-white font-medium text-xl">Free</span>
+                                    )}
                                 </div>
                             </div>
 

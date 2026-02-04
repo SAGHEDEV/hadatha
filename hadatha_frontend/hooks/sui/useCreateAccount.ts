@@ -1,16 +1,24 @@
 import { useCurrentAccount, useSignAndExecuteTransaction } from "@mysten/dapp-kit";
 import { Transaction } from "@mysten/sui/transactions";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { REGISTRY_PACKAGE_ID, HADATHA_MODULE, ACCOUNT_ROOT_ID } from "@/lib/constant";
+
+export interface CreateAccountParams {
+    name: string;
+    email: string;
+    bio: string;
+    twitter: string;
+    github: string;
+    website: string;
+    imageUrl: string;
+}
 
 export const useCreateAccount = () => {
     const account = useCurrentAccount();
     const { mutateAsync: signAndExecuteTransaction } = useSignAndExecuteTransaction();
 
-    const queryClient = useQueryClient();
-
     const mutation = useMutation({
-        mutationFn: async ({ name, email, image_url }: { name: string, email: string, image_url: string }) => {
+        mutationFn: async ({ name, email, bio, twitter, github, website, imageUrl }: CreateAccountParams) => {
             if (!account) {
                 throw new Error('Wallet not connected');
             }
@@ -22,9 +30,13 @@ export const useCreateAccount = () => {
                     target: `${REGISTRY_PACKAGE_ID}::${HADATHA_MODULE}::create_account`,
                     arguments: [
                         tx.object(ACCOUNT_ROOT_ID),
-                        tx.pure.string(name),
-                        tx.pure.string(email),
-                        tx.pure.string(image_url),
+                        tx.pure.vector("u8", Array.from(new TextEncoder().encode(name))),
+                        tx.pure.vector("u8", Array.from(new TextEncoder().encode(email))),
+                        tx.pure.vector("u8", Array.from(new TextEncoder().encode(bio))),
+                        tx.pure.vector("u8", Array.from(new TextEncoder().encode(twitter))),
+                        tx.pure.vector("u8", Array.from(new TextEncoder().encode(github))),
+                        tx.pure.vector("u8", Array.from(new TextEncoder().encode(website))),
+                        tx.pure.vector("u8", Array.from(new TextEncoder().encode(imageUrl))),
                     ],
                 });
 
@@ -39,9 +51,6 @@ export const useCreateAccount = () => {
                 throw error;
             }
         },
-        onSuccess: () => {
-            queryClient.invalidateQueries();
-        }
     });
 
     return {

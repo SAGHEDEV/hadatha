@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { Event } from "@/types";
 import {
@@ -23,6 +24,7 @@ import { useGetDerivedAddress } from "@/hooks/sui/useCheckAccountExistence";
 import { useRouter } from "next/navigation";
 import { useMintAttendanceNFT } from "@/hooks/sui/useMintAttendeeNFT";
 import { EventMap } from "../events/EventMap";
+import { formatAmount, getCurrencyLabel } from "@/lib/coin";
 
 // Helper function to format date
 export const formatDate = (dateString: string): string => {
@@ -76,7 +78,6 @@ const EventDetails = ({
 
     // Check if user is already registered
     const isRegistered =
-        derivedAddress &&
         currentAccount?.address &&
         event?.attendees?.includes(currentAccount?.address);
 
@@ -204,9 +205,10 @@ const EventDetails = ({
                         <div className="flex gap-2 items-center justify-start">
                             <div className="flex items-center">
                                 {event.organizers.map((organizer, index) => (
-                                    <span
+                                    <Link
                                         key={index}
-                                        className="relative w-8 h-8 rounded-full overflow-hidden bg-black border border-white/20 -ml-2 first-of-type:ml-0 "
+                                        href={`/profile/${organizer.address}`}
+                                        className="relative w-8 h-8 rounded-full overflow-hidden bg-black border border-white/20 -ml-2 first-of-type:ml-0 hover:z-10 transition-transform hover:scale-110"
                                     >
                                         <Image
                                             src={organizer.avatarUrl}
@@ -214,15 +216,19 @@ const EventDetails = ({
                                             fill
                                             className="object-cover"
                                         />
-                                    </span>
+                                    </Link>
                                 ))}
                             </div>
                             {(event.organizers && event.organizers.length > 0) ? event.organizers.map((organizer, index) => (
-                                <span key={index} className="relative">
+                                <Link
+                                    key={index}
+                                    href={`/profile/${organizer.address}`}
+                                    className="relative hover:text-white transition-colors"
+                                >
                                     {" "}
                                     {organizer.name}
                                     {index < event.organizers.length - 1 ? ", " : ""}
-                                </span>
+                                </Link>
                             )) : <span>No organizers Selected</span>}
                         </div>
                     </div>
@@ -307,16 +313,19 @@ const EventDetails = ({
                                 <div className="p-3 rounded-xl bg-white/5 border border-white/10">
                                     <Globe className="w-5 h-5 text-white" />
                                 </div>
-                                <div className="flex flex-col">
+                                <div className="w-full flex flex-col">
                                     <span className="text-white/60 text-sm">Price</span>
-                                    {ticketTiers.length > 0 ? (
-                                        <div className="flex flex-col gap-2 mt-2">
+                                    {ticketTiers.length > 0 && !(ticketTiers.length === 1 && Number(ticketTiers[0].price) === 0) ? (
+                                        <div className="flex flex-col gap-2 mt-2 w-full">
                                             {ticketTiers.map((tier, i) => (
-                                                <div key={i} className="flex justify-between items-center text-sm bg-white/5 p-2 rounded-lg border border-white/5">
-                                                    <span className="text-white/80">{tier.name}</span>
-                                                    <span className="text-amber-400 font-mono font-medium">
-                                                        {(Number(tier.price) / 1_000_000_000).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 9 })} SUI
-                                                    </span>
+                                                <div key={i} className="w-full flex justify-between items-center text-sm bg-white/5 p-2 rounded-lg border border-white/5">
+                                                    <div className="w-full flex flex-col">
+                                                        <span className="text-white/80">{tier.name}</span>
+                                                        <span className="text-white/40 text-xs">{tier.quantity || 0} available</span>
+                                                    </div>
+                                                    <div className="w-full max-w-fit text-amber-400 font-mono font-medium">
+                                                        {Number(tier.price) === 0 ? "Free" : `${formatAmount(tier.price)} ${getCurrencyLabel(tier.currency || "SUI")}`}
+                                                    </div>
                                                 </div>
                                             ))}
                                         </div>

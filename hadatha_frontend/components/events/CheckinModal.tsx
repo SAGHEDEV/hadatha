@@ -53,7 +53,7 @@ export const CheckInModal = ({
         setScannedEventId(scannedData);
         setCheckInState('processing');
 
-        if (!currentAccount?.address || !derivedAddress) {
+        if (!currentAccount?.address) {
             setCheckInState('error');
             setErrorMessage("Please connect your wallet first");
             setTimeout(() => {
@@ -67,7 +67,7 @@ export const CheckInModal = ({
             await checkIn({
                 eventId: scannedData,
                 attendeeAddress: currentAccount.address,
-                accountId: derivedAddress,
+                accountId: derivedAddress || null,
             });
 
             setCheckInState('success');

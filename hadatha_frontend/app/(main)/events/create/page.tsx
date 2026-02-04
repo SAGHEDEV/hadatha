@@ -3,6 +3,7 @@
 import { useForm, FormProvider } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
+import { SUI_TYPE, USDC_TYPE } from "@/lib/constant";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { CreateEventForm } from "@/components/events/create/CreateEventForm"
 import { EventPreview } from "@/components/events/create/EventPreview"
@@ -34,7 +35,8 @@ const eventSchema = z.object({
     ticketTiers: z.array(z.object({
         name: z.string().min(1, "Tier name is required"),
         price: z.string().min(1, "Price is required"),
-        currency: z.enum(["SUI", "USDT"])
+        currency: z.enum(["SUI", "USDC"]),
+        quantity: z.number().min(1, "Quantity must be at least 1")
     })).optional(),
     maxAttendees: z.number().min(1, "Must have at least 1 attendee"),
     registrationFields: z.array(
@@ -110,14 +112,23 @@ export default function CreateEventPage() {
                 submissionTags.push(`lng:${data.location_lng}`);
             }
 
-            // Prepare Tiers
             let tierNames: string[] = [];
             let tierPrices: string[] = [];
+            let tierCurrencies: string[] = [];
+            let tierCapacities: number[] = [];
 
             if (data.ticketType === "paid" && data.ticketTiers && data.ticketTiers.length > 0) {
+                // For each tier, map its currency to the correct Sui type
+                tierCurrencies = data.ticketTiers.map(t => t.currency === "USDC" ? USDC_TYPE : SUI_TYPE);
+                tierPrices = data.ticketTiers.map(t => (parseFloat(t.price) * 1_000_000_000).toString());
                 tierNames = data.ticketTiers.map(t => t.name);
-                // Convert SUI to MIST (1 SUI = 10^9 MIST)
-                tierPrices = data.ticketTiers.map(t => Math.floor(parseFloat(t.price) * 1_000_000_000).toString());
+                tierCapacities = data.ticketTiers.map(t => t.quantity);
+            } else {
+                // Default tier for free events
+                tierNames = ["General Admission"];
+                tierPrices = ["0"];
+                tierCurrencies = [SUI_TYPE];
+                tierCapacities = [data.maxAttendees];
             }
 
             await createEvent({
@@ -135,6 +146,8 @@ export default function CreateEventPage() {
                 tags: submissionTags,
                 tierNames,
                 tierPrices,
+                tierCurrencies,
+                tierCapacities,
             });
 
             setOpenEffectModal({ open: true, title: "Event Created Successfully!", message: "Event Created Successfully!", type: "success" })

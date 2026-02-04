@@ -258,6 +258,11 @@ export const useGetAllEventDetails = (refetchInterval?: number) => {
                     status: bytesToString(fields.status),
                     price: bytesToString(fields.price),
                     allowCheckin: fields.allow_checkin,
+                    ticket_tiers: (fields.ticket_tiers || []).map((tier: any) => ({
+                        name: bytesToString(tier.fields.name),
+                        price: tier.fields.price.toString(),
+                        quantity: Number(tier.fields.capacity),
+                    })),
                     nft_config: fields.nft_config ? {
                         enabled: !!fields.nft_config.enabled,
                         nft_name: bytesToString(fields.nft_config.nft_name || []),
@@ -459,6 +464,11 @@ export const useGetEventById = (eventId: string, refetchInterval?: number) => {
         status: bytesToString(fields.status),
         price: bytesToString(fields.price),
         allowCheckin: fields.allow_checkin,
+        ticket_tiers: (fields.ticket_tiers || []).map((tier: any) => ({
+            name: bytesToString(tier.fields.name),
+            price: tier.fields.price.toString(),
+            quantity: Number(tier.fields.capacity),
+        })),
         nft_config: fields.nft_config ? {
             enabled: !!fields.nft_config.enabled,
             nft_name: bytesToString(fields.nft_config.nft_name || []),

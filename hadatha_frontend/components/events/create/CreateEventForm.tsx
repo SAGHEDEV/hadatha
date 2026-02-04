@@ -1,7 +1,7 @@
 "use client"
 
 import { useFormContext } from "react-hook-form"
-import { CalendarIcon, Upload, Clock } from "lucide-react"
+import { CalendarIcon, Upload, Clock, Ticket, Coins } from "lucide-react"
 import { format } from "date-fns"
 
 import { cn } from "@/lib/utils"
@@ -27,12 +27,26 @@ import { CustomFieldsBuilder } from "./CustomFieldsBuilder"
 import { TagMultiSelect } from "./TagMultiSelect"
 import { TicketTierSelector } from "./TicketTierSelector"
 import { LocationPicker } from "./LocationPicker"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Image from "next/image"
 
 export function CreateEventForm({ isLoading }: { isLoading: boolean }) {
     const { control, setValue, watch } = useFormContext()
     const [imagePreview, setImagePreview] = useState<string | null>(watch("imagePreviewUrl") ?? (typeof watch("image") === "string" ? watch("image") : null))
+
+    const ticketTiers = watch("ticketTiers")
+    const ticketType = watch("ticketType")
+
+    // Update maxAttendees when ticket tiers change for paid events
+    useEffect(() => {
+        if (ticketType === "paid" && Array.isArray(ticketTiers)) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const total = ticketTiers.reduce((acc: number, tier: any) => acc + (tier.quantity || 0), 0)
+            if (total > 0) {
+                setValue("maxAttendees", total)
+            }
+        }
+    }, [ticketTiers, ticketType, setValue])
 
 
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -267,31 +281,54 @@ export function CreateEventForm({ isLoading }: { isLoading: boolean }) {
                     control={control}
                     name="ticketType"
                     render={({ field }) => (
-                        <FormItem className="space-y-3">
-                            <FormLabel className="text-white">Ticket Type</FormLabel>
+                        <FormItem className="space-y-4">
+                            <FormLabel className="text-sm font-bold text-white/50 uppercase tracking-widest">Select Ticket Type</FormLabel>
                             <FormControl>
                                 <RadioGroup
                                     onValueChange={field.onChange}
                                     defaultValue={field.value}
-                                    className="flex flex-col space-y-1"
+                                    className="grid grid-cols-1 sm:grid-cols-2 gap-4"
                                     disabled={isLoading}
                                 >
-                                    <FormItem className="flex items-center space-x-3 space-y-0">
-                                        <FormControl>
-                                            <RadioGroupItem value="free" className="border-white text-white" />
-                                        </FormControl>
-                                        <FormLabel className="font-normal text-white">
-                                            Free Event
-                                        </FormLabel>
-                                    </FormItem>
-                                    <FormItem className="flex items-center space-x-3 space-y-0">
-                                        <FormControl>
-                                            <RadioGroupItem value="paid" className="border-white text-white" />
-                                        </FormControl>
-                                        <FormLabel className="font-normal text-white">
-                                            Paid Event
-                                        </FormLabel>
-                                    </FormItem>
+                                    <div>
+                                        <RadioGroupItem
+                                            value="free"
+                                            id="free"
+                                            className="peer sr-only"
+                                        />
+                                        <label
+                                            htmlFor="free"
+                                            className="flex flex-col items-center justify-center p-8 rounded-3xl border-2 border-white/5 bg-white/5 hover:bg-white/10 hover:border-white/10 peer-data-[state=checked]:border-white peer-data-[state=checked]:bg-white/10 transition-all cursor-pointer group"
+                                        >
+                                            <div className="w-14 h-14 rounded-full bg-white/5 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                                                <Ticket className="w-7 h-7 text-white/40 peer-data-[state=checked]:group-[]:text-white" />
+                                            </div>
+                                            <div className="text-center">
+                                                <h4 className="font-bold text-white text-lg">Free Event</h4>
+                                                <p className="text-xs text-white/40 mt-1">Attendees join without any cost</p>
+                                            </div>
+                                        </label>
+                                    </div>
+
+                                    <div>
+                                        <RadioGroupItem
+                                            value="paid"
+                                            id="paid"
+                                            className="peer sr-only"
+                                        />
+                                        <label
+                                            htmlFor="paid"
+                                            className="flex flex-col items-center justify-center p-8 rounded-3xl border-2 border-white/5 bg-white/5 hover:bg-white/10 hover:border-white/10 peer-data-[state=checked]:border-white peer-data-[state=checked]:bg-white/10 transition-all cursor-pointer group"
+                                        >
+                                            <div className="w-14 h-14 rounded-full bg-white/5 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                                                <Coins className="w-7 h-7 text-white/40 peer-data-[state=checked]:group-[]:text-white" />
+                                            </div>
+                                            <div className="text-center">
+                                                <h4 className="font-bold text-white text-lg">Paid Event</h4>
+                                                <p className="text-xs text-white/40 mt-1">Requires registration fee in SUI or USDC</p>
+                                            </div>
+                                        </label>
+                                    </div>
                                 </RadioGroup>
                             </FormControl>
                             <FormMessage />
@@ -327,7 +364,7 @@ export function CreateEventForm({ isLoading }: { isLoading: boolean }) {
                             <FormLabel className="text-white">Maximum Attendees (Total)</FormLabel>
                             <FormControl>
                                 <Input
-                                    disabled={isLoading}
+                                    disabled={isLoading || watch("ticketType") === "paid"}
                                     type="number"
                                     placeholder="e.g., 100"
                                     {...field}

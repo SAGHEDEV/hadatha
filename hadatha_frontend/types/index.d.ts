@@ -30,11 +30,14 @@ export interface Event {
     allowCheckin?: boolean;
     checkedInCount?: number;
     nft_config?: NFTConfig;
+    price?: string;
 }
 
 export interface TicketTier {
     name: string;
     price: string;
+    currency?: "SUI" | "USDC";
+    quantity: number;
 }
 
 export type RegistrationStatus = "registered" | "checked-in" | "cancelled";
@@ -62,6 +65,10 @@ export interface AccountDetails {
     address: string;
     name: string;
     email: string;
+    bio: string;
+    twitter: string;
+    github: string;
+    website: string;
     image_url: string;
     total_attended: number;
     total_organized: number;

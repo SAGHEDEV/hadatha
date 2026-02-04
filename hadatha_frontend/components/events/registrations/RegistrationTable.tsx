@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { Registration, RegistrationStatus } from "@/types"
+import Link from "next/link"
 import {
     Table,
     TableBody,
@@ -29,10 +30,9 @@ import Image from "next/image"
 
 interface RegistrationTableProps {
     data: Registration[]
-    registrationFields?: { name: string; type: string }[]
 }
 
-export function RegistrationTable({ data, registrationFields = [] }: RegistrationTableProps) {
+export function RegistrationTable({ data }: RegistrationTableProps) {
     const [selectedRegistration, setSelectedRegistration] = useState<Registration | null>(null)
     const [copiedAddress, setCopiedAddress] = useState<string | null>(null)
     console.log(selectedRegistration?.registrationData)
@@ -82,22 +82,24 @@ export function RegistrationTable({ data, registrationFields = [] }: Registratio
                             <TableRow key={registration.id} className="border-white/10 hover:bg-white/5">
                                 <TableCell>
                                     <div className="flex items-center gap-3">
-                                        {registration.user.avatarUrl ? (
-                                            <div className="relative w-10 h-10 rounded-full overflow-hidden">
-                                                <Image
-                                                    src={registration.user.avatarUrl}
-                                                    alt={registration.user.name}
-                                                    fill
-                                                    className="object-cover"
-                                                />
-                                            </div>
-                                        ) : (
-                                            <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white text-sm">
-                                                {registration.user.name.charAt(0)}
-                                            </div>
-                                        )}
+                                        <Link
+                                            href={`/profile/${registration.address}`}
+                                            className="relative w-10 h-10 rounded-full overflow-hidden bg-white/5 hover:border-white/40 border border-transparent transition-all"
+                                        >
+                                            <Image
+                                                src={registration.user.avatarUrl || `https://ui-avatars.com/api/?name=${registration.user.name}`}
+                                                alt={registration.user.name}
+                                                fill
+                                                className="object-cover"
+                                            />
+                                        </Link>
                                         <div>
-                                            <p className="text-white font-medium">{registration.user.name}</p>
+                                            <Link
+                                                href={`/profile/${registration.address}`}
+                                                className="text-white font-medium hover:underline decoration-white/20 underline-offset-4"
+                                            >
+                                                {registration.user.name}
+                                            </Link>
                                             <p className="text-white/60 text-sm">{registration.user.email}</p>
                                         </div>
                                     </div>
@@ -260,12 +262,14 @@ export function RegistrationTable({ data, registrationFields = [] }: Registratio
                                 <div className="p-4 bg-white/5 rounded-xl border border-white/10">
                                     <h4 className="text-white font-semibold mb-3">Registration Information</h4>
                                     <div className="space-y-3">
-                                        {Object.entries(selectedRegistration.registrationData).map(([key, value]) => (
-                                            <div key={key} className="flex justify-between items-start py-2 border-b border-white/10 last:border-0">
-                                                <span className="text-white/60 text-sm">{key}</span>
-                                                <span className="text-white font-medium text-right max-w-[60%] truncate">{value || 'N/A'}</span>
-                                            </div>
-                                        ))}
+                                        {Object.entries(selectedRegistration.registrationData).map(([key, value]) => {
+                                            return (
+                                                <div key={key} className="flex justify-between items-start py-2 border-b border-white/10 last:border-0">
+                                                    <span className="text-white/60 text-sm">{key}</span>
+                                                    <span className="text-white font-medium text-right max-w-[60%] truncate">{String(value) || 'N/A'}</span>
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 </div>
                             )}
@@ -274,5 +278,5 @@ export function RegistrationTable({ data, registrationFields = [] }: Registratio
                 </DialogContent>
             </Dialog>
         </>
-    )
+    );
 }

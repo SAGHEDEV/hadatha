@@ -24,7 +24,7 @@ export const LocationPicker = ({ value, onLocationSelect, disabled, className }:
                     onChange={(e) => onLocationSelect(e.target.value)} // Latitude/Longitude undefined
                     disabled={disabled}
                     placeholder="Event location (e.g. Dubai Mall)"
-                    className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-white/40 focus:border-white/30 h-12"
+                    className="w-(--radix-popover-trigger-width) bg-white/5 border-white/10 text-white placeholder:text-white/40 focus:border-white/30 h-12"
                 />
             </div>
             {/* Map view removed for now */}

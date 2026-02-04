@@ -45,6 +45,11 @@ export function EventPreview() {
         maxAttendees: values.maxAttendees,
         start_time: values.startTime,
         price: values.ticketType === "free" ? "0" : "paid",
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ticket_tiers: values.ticketTiers?.map((t: any) => ({
+            ...t,
+            price: (parseFloat(t.price) * 1_000_000_000).toString()
+        })) || [],
         end_time: values.endTime,
         tags: values.tags
     }

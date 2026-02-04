@@ -67,6 +67,12 @@ const RegistrationList = () => {
                 day: 'numeric'
             })
 
+            // Get ticket type from tier index or custom fields
+            const ticketType = event?.ticket_tiers?.[attendee.ticketTierIndex]?.name
+                || attendee.registrationValues['Ticket Type']
+                || attendee.registrationValues['ticket_type']
+                || 'General Admission';
+
             return {
                 id: attendee.address,
                 eventId: eventId,
@@ -77,14 +83,14 @@ const RegistrationList = () => {
                 },
                 registrationDate,
                 status,
-                ticketType: attendee.registrationValues['Ticket Type'] || 'General Admission',
+                ticketType,
                 checkInTime,
                 address: attendee.address,
                 registrationData: attendee.registrationValues,
                 nftMinted: attendee.nftMinted,
             }
         })
-    }, [attendees, eventId])
+    }, [attendees, eventId, event])
 
     // Filter registrations
     const filteredRegistrations = useMemo(() => {

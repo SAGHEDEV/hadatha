@@ -35,17 +35,6 @@ export const useToggleAllowCheckin = () => {
                 return result;
             } catch (error) {
                 console.error('❌ Error toggling check-in allowance:', error);
-
-                let errorMessage = "Failed to update check-in settings. Please try again.";
-
-                if (error instanceof Error) {
-                    if (error.message.includes('ENotOrganizer')) {
-                        errorMessage = "Only organizers can change check-in settings.";
-                    } else if (error.message.includes('Insufficient gas')) {
-                        errorMessage = "Insufficient gas to complete transaction.";
-                    }
-                }
-
                 throw error;
             }
         },
@@ -68,7 +57,7 @@ export const useToggleAllowCheckin = () => {
 interface CheckInParams {
     eventId: string;
     attendeeAddress: string;
-    accountId: string;
+    accountId?: string | null;
 }
 
 export const useCheckIn = () => {
@@ -85,15 +74,26 @@ export const useCheckIn = () => {
             try {
                 const tx = new Transaction();
 
-                tx.moveCall({
-                    target: `${REGISTRY_PACKAGE_ID}::${HADATHA_MODULE}::checkin_event`,
-                    arguments: [
-                        tx.object(eventId),
-                        tx.pure.address(attendeeAddress),
-                        tx.object(accountId),
-                        tx.object(CLOCK_ID),
-                    ],
-                });
+                if (accountId) {
+                    tx.moveCall({
+                        target: `${REGISTRY_PACKAGE_ID}::${HADATHA_MODULE}::checkin_event`,
+                        arguments: [
+                            tx.object(eventId),
+                            tx.pure.address(attendeeAddress),
+                            tx.object(accountId),
+                            tx.object(CLOCK_ID),
+                        ],
+                    });
+                } else {
+                    tx.moveCall({
+                        target: `${REGISTRY_PACKAGE_ID}::${HADATHA_MODULE}::checkin_event_guest`,
+                        arguments: [
+                            tx.object(eventId),
+                            tx.pure.address(attendeeAddress),
+                            tx.object(CLOCK_ID),
+                        ],
+                    });
+                }
 
                 const result = await signAndExecuteTransaction({
                     transaction: tx,
@@ -101,29 +101,9 @@ export const useCheckIn = () => {
 
                 console.log('✅ Check-in successful:', result);
 
-                const isSelfCheckIn = account.address === attendeeAddress;
-
-
                 return result;
             } catch (error) {
                 console.error('❌ Error during check-in:', error);
-
-                let errorMessage = "Failed to check in. Please try again.";
-
-                if (error instanceof Error) {
-                    if (error.message.includes('ECheckinNotAllowed')) {
-                        errorMessage = "Check-in is not currently allowed for this event.";
-                    } else if (error.message.includes('ENotRegistered')) {
-                        errorMessage = "This attendee is not registered for the event.";
-                    } else if (error.message.includes('EAlreadyCheckedIn')) {
-                        errorMessage = "This attendee has already checked in.";
-                    } else if (error.message.includes('ENotOrganizer')) {
-                        errorMessage = "You don't have permission to check in this attendee.";
-                    } else if (error.message.includes('Insufficient gas')) {
-                        errorMessage = "Insufficient gas to complete transaction.";
-                    }
-                }
-
                 throw error;
             }
         },
@@ -148,7 +128,7 @@ interface BulkCheckInParams {
     eventId: string;
     attendees: Array<{
         address: string;
-        accountId: string;
+        accountId?: string | null;
     }>;
 }
 
@@ -168,15 +148,26 @@ export const useBulkCheckIn = () => {
 
                 // Add multiple check-in calls to the same transaction
                 attendees.forEach(({ address, accountId }) => {
-                    tx.moveCall({
-                        target: `${REGISTRY_PACKAGE_ID}::${HADATHA_MODULE}::checkin_event`,
-                        arguments: [
-                            tx.object(eventId),
-                            tx.pure.address(address),
-                            tx.object(accountId),
-                            tx.object(CLOCK_ID),
-                        ],
-                    });
+                    if (accountId) {
+                        tx.moveCall({
+                            target: `${REGISTRY_PACKAGE_ID}::${HADATHA_MODULE}::checkin_event`,
+                            arguments: [
+                                tx.object(eventId),
+                                tx.pure.address(address),
+                                tx.object(accountId),
+                                tx.object(CLOCK_ID),
+                            ],
+                        });
+                    } else {
+                        tx.moveCall({
+                            target: `${REGISTRY_PACKAGE_ID}::${HADATHA_MODULE}::checkin_event_guest`,
+                            arguments: [
+                                tx.object(eventId),
+                                tx.pure.address(address),
+                                tx.object(CLOCK_ID),
+                            ],
+                        });
+                    }
                 });
 
                 const result = await signAndExecuteTransaction({
@@ -188,17 +179,6 @@ export const useBulkCheckIn = () => {
                 return result;
             } catch (error) {
                 console.error('❌ Error during bulk check-in:', error);
-
-                let errorMessage = "Failed to check in attendees. Please try again.";
-
-                if (error instanceof Error) {
-                    if (error.message.includes('ENotOrganizer')) {
-                        errorMessage = "Only organizers can perform bulk check-in.";
-                    } else if (error.message.includes('ECheckinNotAllowed')) {
-                        errorMessage = "Check-in is not currently allowed for this event.";
-                    }
-                }
-
                 throw error;
             }
         },

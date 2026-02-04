@@ -19,6 +19,8 @@ interface CreateEventParams {
     tags: string[];
     tierNames: string[];
     tierPrices: string[];
+    tierCurrencies: string[];
+    tierCapacities: number[];
 }
 
 export const useCreateEvent = () => {
@@ -53,6 +55,8 @@ export const useCreateEvent = () => {
                         tx.pure.vector("string", params.tags),
                         tx.pure.vector("string", params.tierNames),
                         tx.pure.vector("u64", params.tierPrices),
+                        tx.pure.vector("string", params.tierCurrencies),
+                        tx.pure.vector("u64", params.tierCapacities),
                         tx.object(CLOCK_ID),
                     ],
                 });

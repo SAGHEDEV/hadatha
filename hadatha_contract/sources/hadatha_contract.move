@@ -7,6 +7,10 @@ module hadatha_contract::hadatha_contract {
     use sui::url::{Self, Url};
     use sui::display;
     use sui::package;
+    use sui::coin::{Self, Coin};
+    use sui::sui::SUI;
+    use sui::type_name;
+    use std::ascii;
 
     // ====== Error Codes ======
     const EEventNotFound: u64 = 0;
@@ -24,6 +28,9 @@ module hadatha_contract::hadatha_contract {
     const EAlreadyMintedNFT: u64 = 12;
     const ENFTNotEnabled: u64 = 13;
     const EEventNotEnded: u64 = 14;
+    const EInvalidTier: u64 = 15;
+    const EInsufficientPayment: u64 = 16;
+    const EInvalidCurrency: u64 = 17;
 
     // ====== Events ======
     public struct EventCreated has copy, drop {
@@ -75,6 +82,14 @@ module hadatha_contract::hadatha_contract {
     public struct HADATHA_CONTRACT has drop {}
 
     // ====== Structs ======
+    public struct TicketTier has store, copy, drop {
+        name: vector<u8>,
+        price: u64,
+        currency: ascii::String,
+        capacity: u64,
+        sold: u64,
+    }
+
     public struct AccountRoot has key {
         id: UID,
     }
@@ -83,7 +98,12 @@ module hadatha_contract::hadatha_contract {
         id: UID,
         name: vector<u8>,
         email: vector<u8>,
+        bio: vector<u8>,
+        twitter: vector<u8>,
+        github: vector<u8>,
+        website: vector<u8>,
         image_url: vector<u8>,
+        owner: address,
         total_attended: u64,
         total_organized: u64,
         total_hosted: u64,
@@ -101,6 +121,7 @@ module hadatha_contract::hadatha_contract {
         checked_in_at: u64,
         registered_at: u64,
         nft_minted: bool,
+        ticket_tier_index: u64, // Track which tier they bought
     }
 
     // NFT Configuration for each event
@@ -143,7 +164,7 @@ module hadatha_contract::hadatha_contract {
         max_attendees: u64,
         tags: vector<vector<u8>>,
         allow_checkin: bool,
-        price: vector<u8>,
+        ticket_tiers: vector<TicketTier>, // Replaced price with tiers
         status: vector<u8>, // "ongoing", "closed", "hidden", "past"
         nft_config: NFTConfig,
     }
@@ -190,7 +211,7 @@ module hadatha_contract::hadatha_contract {
         );
         display.add(
             b"project_url".to_string(),
-            b"https://hadatha.app".to_string()
+            b"https://hadathaio.vercel.app".to_string()
         );
         
         display.update_version();
@@ -206,6 +227,10 @@ module hadatha_contract::hadatha_contract {
         account_root: &mut AccountRoot,
         name: vector<u8>,
         email: vector<u8>,
+        bio: vector<u8>,
+        twitter: vector<u8>,
+        github: vector<u8>,
+        website: vector<u8>,
         image_url: vector<u8>,
         ctx: &mut TxContext
     ) {
@@ -218,7 +243,12 @@ module hadatha_contract::hadatha_contract {
             id: derived_object::claim(&mut account_root.id, sender),
             name,
             email,
+            bio,
+            twitter,
+            github,
+            website,
             image_url,
+            owner: sender,
             total_attended: 0,
             total_organized: 0,
             total_hosted: 0,
@@ -241,11 +271,19 @@ module hadatha_contract::hadatha_contract {
         account: &mut Account,
         name: vector<u8>,
         email: vector<u8>,
+        bio: vector<u8>,
+        twitter: vector<u8>,
+        github: vector<u8>,
+        website: vector<u8>,
         image_url: vector<u8>,
         _ctx: &mut TxContext
     ) {
         account.name = name;
         account.email = email;
+        account.bio = bio;
+        account.twitter = twitter;
+        account.github = github;
+        account.website = website;
         account.image_url = image_url;
     }
 
@@ -266,7 +304,10 @@ module hadatha_contract::hadatha_contract {
         event_organizers: vector<address>,
         max_attendees: u64,
         tags: vector<vector<u8>>,
-        price: vector<u8>,
+        tier_names: vector<vector<u8>>,
+        tier_prices: vector<u64>,
+        tier_currencies: vector<ascii::String>,
+        tier_capacities: vector<u64>,
         clock: &Clock,
         ctx: &mut TxContext
     ) {
@@ -297,6 +338,21 @@ module hadatha_contract::hadatha_contract {
             i = i + 1;
         };
 
+        let mut ticket_tiers = vector::empty<TicketTier>();
+        let tier_len = vector::length(&tier_names);
+        let mut k = 0;
+        while (k < tier_len) {
+             let tier = TicketTier {
+                  name: *vector::borrow(&tier_names, k),
+                  price: *vector::borrow(&tier_prices, k),
+                  currency: *vector::borrow(&tier_currencies, k),
+                  capacity: *vector::borrow(&tier_capacities, k),
+                  sold: 0,
+             };
+             vector::push_back(&mut ticket_tiers, tier);
+             k = k + 1;
+        };
+
         let event = Event {
             id: object::new(ctx),
             title,
@@ -315,7 +371,7 @@ module hadatha_contract::hadatha_contract {
             max_attendees,
             tags,
             allow_checkin: false,
-            price,
+            ticket_tiers,
             status: b"ongoing",
             nft_config: NFTConfig {
                 enabled: false,
@@ -410,155 +466,159 @@ module hadatha_contract::hadatha_contract {
     }
 
     /// Mint attendance NFT (only for checked-in attendees)
-  public entry fun mint_attendance_nft(
-    event: &mut Event,
-    account: &Account,
-    clock: &Clock,
-    ctx: &mut TxContext
-) {
-    let sender = tx_context::sender(ctx);
-    let current_time = clock::timestamp_ms(clock);
-
-    // Check if NFT minting is enabled
-    assert!(event.nft_config.enabled, ENFTNotEnabled);
-
-    // Check if attendee is registered
-    assert!(table::contains(&event.attendees, sender), ENotRegistered);
-
-    //
-    // ---- PRE-EXTRACT ALL EVENT FIELDS BEFORE MUT BORROW ----
-    //
-    let event_id_copy = object::id(event);
-    let event_title_copy = event.title;
-    let nft_img_copy = event.nft_config.nft_image_url;
-    let nft_desc_copy = event.nft_config.nft_description;
-
-    {
-        let registration = table::borrow_mut(&mut event.attendees, sender);
-
-        // Check if attendee has checked in
-        assert!(registration.checked_in, ENotCheckedIn);
-
-        // Check if NFT already minted
-        assert!(!registration.nft_minted, EAlreadyMintedNFT);
-
-        // Build the NFT *without touching `event` again*
-        let nft = AttendanceNFT {
-            id: object::new(ctx),
-            event_id: event_id_copy,
-            event_title: event_title_copy,
-            attendee_name: account.name,
-            attendee_address: sender,
-            check_in_time: registration.checked_in_at,
-            mint_time: current_time,
-            image_url: url::new_unsafe_from_bytes(nft_img_copy),
-            description: string::utf8(nft_desc_copy),
-        };
-
-        let nft_id = object::id(&nft);
-
-        // Update attendee record
-        registration.nft_minted = true;
-
-        // Update event metadata (still allowed because we're still inside the borrow)
-        event.nft_config.total_minted = event.nft_config.total_minted + 1;
-
-        // ---- End mutable borrow after this block ----
-
-        // Emit event (now allowed)
-        event::emit(AttendanceNFTMinted {
-            nft_id,
-            event_id: event_id_copy,
-            attendee: sender,
-            timestamp: current_time,
-        });
-
-        // Transfer NFT to user
-        transfer::public_transfer(nft, sender);
-    }
-}
-
-
-    /// Admin mint NFT for attendee (only organizers)
-  public entry fun admin_mint_nft_for_attendee(
-    event: &mut Event,
-    attendee: address,
-    attendee_account: &Account,
-    clock: &Clock,
-    ctx: &mut TxContext
-) {
-    let sender = tx_context::sender(ctx);
-    let current_time = clock::timestamp_ms(clock);
-
-    // Check if sender is an organizer
-    assert!(vector::contains(&event.organizers, &sender), ENotOrganizer);
-
-    // Check if NFT minting is enabled
-    assert!(event.nft_config.enabled, ENFTNotEnabled);
-
-    // Check if attendee is registered
-    assert!(table::contains(&event.attendees, attendee), ENotRegistered);
-
-    // PRE-EXTRACT EVERYTHING YOU NEED FROM `event` BEFORE BORROWING MUTABLY
-    let event_id_copy = object::id(event);
-    let event_title_copy = event.title;
-    let nft_image_url_copy = event.nft_config.nft_image_url;
-    let nft_description_copy = event.nft_config.nft_description;
-
-    // Now borrow mutably
-    {
-        let registration = table::borrow_mut(&mut event.attendees, attendee);
-
-        // Check if attendee has checked in
-        assert!(registration.checked_in, ENotCheckedIn);
-
-        // Check if NFT already minted
-        assert!(!registration.nft_minted, EAlreadyMintedNFT);
-
-        // Prepare the NFT (note: avoid using `event` here!)
-        let nft = AttendanceNFT {
-            id: object::new(ctx),
-            event_id: event_id_copy,
-            event_title: event_title_copy,
-            attendee_name: attendee_account.name,
-            attendee_address: attendee,
-            check_in_time: registration.checked_in_at,
-            mint_time: current_time,
-            image_url: url::new_unsafe_from_bytes(nft_image_url_copy),
-            description: string::utf8(nft_description_copy),
-        };
-
-        let nft_id = object::id(&nft);
-
-        // Mark as minted
-        registration.nft_minted = true;
-
-        // Increment total minted
-        event.nft_config.total_minted = event.nft_config.total_minted + 1;
-
-        // Emit event — safe because the mutable borrow ends after this block
-        event::emit(AttendanceNFTMinted {
-            nft_id,
-            event_id: event_id_copy,
-            attendee,
-            timestamp: current_time,
-        });
-
-        // Transfer NFT
-        transfer::public_transfer(nft, attendee);
-    }
-}
-
-
-    /// Register for an event
-    public entry fun register_for_event(
+    public entry fun mint_attendance_nft(
         event: &mut Event,
-        account: &mut Account,
-        registration_values: vector<vector<u8>>,
+        account: &Account,
         clock: &Clock,
         ctx: &mut TxContext
     ) {
         let sender = tx_context::sender(ctx);
+        mint_attendance_nft_internal(event, sender, account.name, clock, ctx);
+    }
+
+    /// Mint attendance NFT for guest
+    public entry fun mint_attendance_nft_guest(
+        event: &mut Event,
+        attendee_name: vector<u8>,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        let sender = tx_context::sender(ctx);
+        mint_attendance_nft_internal(event, sender, attendee_name, clock, ctx);
+    }
+
+    /// Internal helper for minting attendance NFT
+    fun mint_attendance_nft_internal(
+        event: &mut Event,
+        attendee: address,
+        attendee_name: vector<u8>,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        let current_time = clock::timestamp_ms(clock);
+
+        // Check if NFT minting is enabled
+        assert!(event.nft_config.enabled, ENFTNotEnabled);
+
+        // Check if attendee is registered
+        assert!(table::contains(&event.attendees, attendee), ENotRegistered);
+
+        let event_id_copy = object::id(event);
+        let event_title_copy = event.title;
+        let nft_img_copy = event.nft_config.nft_image_url;
+        let nft_desc_copy = event.nft_config.nft_description;
+
+        {
+            let registration = table::borrow_mut(&mut event.attendees, attendee);
+
+            // Check if attendee has checked in
+            assert!(registration.checked_in, ENotCheckedIn);
+
+            // Check if NFT already minted
+            assert!(!registration.nft_minted, EAlreadyMintedNFT);
+
+            // Build the NFT
+            let nft = AttendanceNFT {
+                id: object::new(ctx),
+                event_id: event_id_copy,
+                event_title: event_title_copy,
+                attendee_name,
+                attendee_address: attendee,
+                check_in_time: registration.checked_in_at,
+                mint_time: current_time,
+                image_url: url::new_unsafe_from_bytes(nft_img_copy),
+                description: string::utf8(nft_desc_copy),
+            };
+
+            let nft_id = object::id(&nft);
+
+            // Update attendee record
+            registration.nft_minted = true;
+
+            // Update event metadata
+            event.nft_config.total_minted = event.nft_config.total_minted + 1;
+
+            // Emit event
+            event::emit(AttendanceNFTMinted {
+                nft_id,
+                event_id: event_id_copy,
+                attendee,
+                timestamp: current_time,
+            });
+
+            // Transfer NFT to user
+            transfer::public_transfer(nft, attendee);
+        }
+    }
+
+    /// Admin mint NFT for attendee (only organizers)
+    public entry fun admin_mint_nft_for_attendee(
+        event: &mut Event,
+        attendee: address,
+        attendee_account: &Account,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        admin_mint_nft_for_attendee_guest(event, attendee, attendee_account.name, clock, ctx);
+    }
+
+    /// Admin mint NFT for guest attendee (only organizers)
+    public entry fun admin_mint_nft_for_attendee_guest(
+        event: &mut Event,
+        attendee: address,
+        attendee_name: vector<u8>,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        let sender = tx_context::sender(ctx);
+
+        // Check if sender is an organizer
+        assert!(vector::contains(&event.organizers, &sender), ENotOrganizer);
+
+        mint_attendance_nft_internal(event, attendee, attendee_name, clock, ctx);
+    }
+
+
+    /// Register for an event
+    public entry fun register_for_event<P>(
+        event: &mut Event,
+        account: &mut Account,
+        registration_values: vector<vector<u8>>,
+        tier_index: u64,
+        payment: Coin<P>,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        let sender = tx_context::sender(ctx);
+        register_for_event_internal<P>(event, sender, registration_values, tier_index, payment, clock, ctx);
+
+        // Update account stats
+        account.total_registered = account.total_registered + 1;
+    }
+
+    /// Register for an event as a guest (no Account object)
+    public entry fun register_for_event_guest<P>(
+        event: &mut Event,
+        registration_values: vector<vector<u8>>,
+        tier_index: u64,
+        payment: Coin<P>,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        let sender = tx_context::sender(ctx);
+        register_for_event_internal<P>(event, sender, registration_values, tier_index, payment, clock, ctx);
+    }
+
+    /// Internal helper for registration
+    fun register_for_event_internal<P>(
+        event: &mut Event,
+        sender: address,
+        registration_values: vector<vector<u8>>,
+        tier_index: u64,
+        mut payment: Coin<P>,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
         let current_time = clock::timestamp_ms(clock);
 
         // Check if event is closed
@@ -571,20 +631,58 @@ module hadatha_contract::hadatha_contract {
         // Check if event is full
         assert!(event.attendees_count < event.max_attendees, EEventFull);
 
+        // Validate Tier and Payment
+        assert!(tier_index < vector::length(&event.ticket_tiers), EInvalidTier);
+        let tier = vector::borrow_mut(&mut event.ticket_tiers, tier_index);
+        
+        // Check if tier is full
+        assert!(tier.sold < tier.capacity, EEventFull);
+
+        let paid = coin::value(&payment);
+        assert!(paid >= tier.price, EInsufficientPayment);
+
+        // Verify Currency
+        if (tier.price > 0) {
+            let expected_currency = tier.currency;
+            let actual_currency = type_name::into_string(type_name::get<P>());
+            assert!(actual_currency == expected_currency, EInvalidCurrency);
+        };
+
+        // Handle Payment
+        if (tier.price > 0) {
+            let to_organizer = *vector::borrow(&event.organizers, 0);
+            
+            // If they paid exactly the price, transfer all
+            // If they paid more, split price and return rest
+            if (paid == tier.price) {
+                 transfer::public_transfer(payment, to_organizer);
+            } else {
+                 let amount_to_pay = coin::split(&mut payment, tier.price, ctx);
+                 transfer::public_transfer(amount_to_pay, to_organizer);
+                 transfer::public_transfer(payment, sender); // Refund excess
+            };
+        } else {
+            // Free event/tier
+            if (paid > 0) {
+                transfer::public_transfer(payment, sender); // Refund if they sent money for free event
+            } else {
+                coin::destroy_zero(payment);
+            }
+        };
+
         let registration = RegistrationDetails {
             values: registration_values,
             checked_in: false,
             checked_in_at: 0,
             registered_at: current_time,
             nft_minted: false,
+            ticket_tier_index: tier_index,
         };
 
         table::add(&mut event.attendees, sender, registration);
         event.attendees_count = event.attendees_count + 1;
+        tier.sold = tier.sold + 1;
         event.updated_at = current_time;
-
-        // Update account stats
-        account.total_registered = account.total_registered + 1;
 
         event::emit(EventRegistered {
             event_id: object::id(event),
@@ -606,7 +704,10 @@ module hadatha_contract::hadatha_contract {
         registration_field_names: vector<vector<u8>>,
         registration_field_types: vector<vector<u8>>,
         tags: vector<vector<u8>>,
-        price: vector<u8>,
+        tier_names: vector<vector<u8>>,
+        tier_prices: vector<u64>,
+        tier_currencies: vector<ascii::String>,
+        tier_capacities: vector<u64>,
         organizers: vector<address>,
         clock: &Clock,
         ctx: &mut TxContext
@@ -630,6 +731,21 @@ module hadatha_contract::hadatha_contract {
             i = i + 1;
         };
 
+        let mut ticket_tiers = vector::empty<TicketTier>();
+        let tier_len = vector::length(&tier_names);
+        let mut k = 0;
+        while (k < tier_len) {
+             let tier = TicketTier {
+                  name: *vector::borrow(&tier_names, k),
+                  price: *vector::borrow(&tier_prices, k),
+                  currency: *vector::borrow(&tier_currencies, k),
+                  capacity: *vector::borrow(&tier_capacities, k),
+                  sold: 0, // Resetting sold on edit might be dangerous if people already registered, but let's assume replacement
+             };
+             vector::push_back(&mut ticket_tiers, tier);
+             k = k + 1;
+        };
+
         event.title = title;
         event.description = description;
         event.location = location;
@@ -638,7 +754,7 @@ module hadatha_contract::hadatha_contract {
         event.image_url = image_url;
         event.max_attendees = max_attendees;
         event.tags = tags;
-        event.price = price;
+        event.ticket_tiers = ticket_tiers;
         event.updated_at = current_time;
         event.organizers = organizers;
         event.registration_fields = fields;
@@ -675,6 +791,34 @@ module hadatha_contract::hadatha_contract {
         ctx: &mut TxContext
     ) {
         let sender = tx_context::sender(ctx);
+        let is_self = sender == attendee;
+        
+        checkin_event_internal(event, attendee, sender, clock);
+
+        // Update account stats if it's the attendee's own check-in
+        if (is_self) {
+            account.total_attended = account.total_attended + 1;
+        };
+    }
+
+    /// Check-in to an event as a guest
+    public entry fun checkin_event_guest(
+        event: &mut Event,
+        attendee: address,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        let sender = tx_context::sender(ctx);
+        checkin_event_internal(event, attendee, sender, clock);
+    }
+
+    /// Internal helper for check-in
+    fun checkin_event_internal(
+        event: &mut Event,
+        attendee: address,
+        sender: address,
+        clock: &Clock,
+    ) {
         let current_time = clock::timestamp_ms(clock);
 
         // Check if check-in is allowed
@@ -697,11 +841,6 @@ module hadatha_contract::hadatha_contract {
         registration.checked_in_at = current_time;
         event.checked_in_count = event.checked_in_count + 1;
         event.updated_at = current_time;
-
-        // Update account stats if it's the attendee's own check-in
-        if (is_self) {
-            account.total_attended = account.total_attended + 1;
-        };
 
         event::emit(EventCheckedIn {
             event_id: object::id(event),

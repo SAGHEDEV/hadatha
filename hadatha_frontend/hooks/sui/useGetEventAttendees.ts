@@ -29,6 +29,7 @@ export interface ParsedAttendee {
     checkedInAt?: string;
     registeredAt: string;
     nftMinted: boolean;
+    ticketTierIndex: number;
 }
 
 export interface AttendeeDetails {
@@ -41,6 +42,7 @@ export interface AttendeeDetails {
     checkedInAt?: string;
     nftMinted: boolean;
     registrationValues: Record<string, string>;
+    ticketTierIndex: number;
 }
 
 // Main hook to get event attendees from the Table
@@ -182,6 +184,7 @@ export const useGetEventAttendeesFromTable = (eventId: string, refetchInterval?:
                             : undefined,
                         registeredAt: formatTimestamp(Number(valueFields.registered_at || 0)),
                         nftMinted: valueFields.nft_minted || false,
+                        ticketTierIndex: Number(valueFields.ticket_tier_index || 0),
                     });
                 } catch (err) {
                     console.error('Error parsing single attendee:', err, obj);
@@ -328,6 +331,7 @@ export const useGetEventAttendeesWithAccounts = (eventId: string, refetchInterva
             checkedInAt: attendee.checkedInAt,
             nftMinted: attendee.nftMinted,
             registrationValues: attendee.registrationData,
+            ticketTierIndex: attendee.ticketTierIndex,
         };
     });
 

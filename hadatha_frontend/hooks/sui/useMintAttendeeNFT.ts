@@ -5,7 +5,8 @@ import { REGISTRY_PACKAGE_ID, HADATHA_MODULE, CLOCK_ID } from "@/lib/constant";
 
 interface MintNFTParams {
     eventId: string;
-    accountId: string;
+    accountId?: string | null;
+    attendeeName?: string;
 }
 
 export const useMintAttendanceNFT = () => {
@@ -14,7 +15,7 @@ export const useMintAttendanceNFT = () => {
     const queryClient = useQueryClient();
 
     const mutation = useMutation({
-        mutationFn: async ({ eventId, accountId }: MintNFTParams) => {
+        mutationFn: async ({ eventId, accountId, attendeeName }: MintNFTParams) => {
             if (!account) {
                 throw new Error('Wallet not connected');
             }
@@ -22,14 +23,25 @@ export const useMintAttendanceNFT = () => {
             try {
                 const tx = new Transaction();
 
-                tx.moveCall({
-                    target: `${REGISTRY_PACKAGE_ID}::${HADATHA_MODULE}::mint_attendance_nft`,
-                    arguments: [
-                        tx.object(eventId),
-                        tx.object(accountId),
-                        tx.object(CLOCK_ID),
-                    ],
-                });
+                if (accountId) {
+                    tx.moveCall({
+                        target: `${REGISTRY_PACKAGE_ID}::${HADATHA_MODULE}::mint_attendance_nft`,
+                        arguments: [
+                            tx.object(eventId),
+                            tx.object(accountId),
+                            tx.object(CLOCK_ID),
+                        ],
+                    });
+                } else {
+                    tx.moveCall({
+                        target: `${REGISTRY_PACKAGE_ID}::${HADATHA_MODULE}::mint_attendance_nft_guest`,
+                        arguments: [
+                            tx.object(eventId),
+                            tx.pure.vector("u8", Array.from(new TextEncoder().encode(attendeeName || "Guest Attendee"))),
+                            tx.object(CLOCK_ID),
+                        ],
+                    });
+                }
 
                 const result = await signAndExecuteTransaction({
                     transaction: tx,
@@ -40,23 +52,6 @@ export const useMintAttendanceNFT = () => {
                 return result;
             } catch (error) {
                 console.error('❌ Error minting attendance NFT:', error);
-
-                let errorMessage = "Failed to mint NFT. Please try again.";
-
-                if (error instanceof Error) {
-                    if (error.message.includes('ENFTNotEnabled')) {
-                        errorMessage = "NFT minting is not enabled for this event.";
-                    } else if (error.message.includes('ENotRegistered')) {
-                        errorMessage = "You are not registered for this event.";
-                    } else if (error.message.includes('ENotCheckedIn')) {
-                        errorMessage = "You must check in before minting the NFT.";
-                    } else if (error.message.includes('EAlreadyMintedNFT')) {
-                        errorMessage = "You have already minted your attendance NFT.";
-                    } else if (error.message.includes('Insufficient gas')) {
-                        errorMessage = "Insufficient gas to complete transaction.";
-                    }
-                }
-
                 throw error;
             }
         },
@@ -80,7 +75,9 @@ export const useMintAttendanceNFT = () => {
 // Hook for admin to mint NFT on behalf of attendee
 interface AdminMintNFTParams {
     eventId: string;
-    attendeeAccountId: string;
+    attendeeAddress: string;
+    attendeeAccountId?: string | null;
+    attendeeName?: string;
 }
 
 export const useAdminMintNFT = () => {
@@ -89,7 +86,7 @@ export const useAdminMintNFT = () => {
     const queryClient = useQueryClient();
 
     const mutation = useMutation({
-        mutationFn: async ({ eventId, attendeeAccountId }: AdminMintNFTParams) => {
+        mutationFn: async ({ eventId, attendeeAddress, attendeeAccountId, attendeeName }: AdminMintNFTParams) => {
             if (!account) {
                 throw new Error('Wallet not connected');
             }
@@ -97,15 +94,27 @@ export const useAdminMintNFT = () => {
             try {
                 const tx = new Transaction();
 
-                tx.moveCall({
-                    target: `${REGISTRY_PACKAGE_ID}::${HADATHA_MODULE}::admin_mint_nft_for_attendee`,
-                    arguments: [
-                        tx.object(eventId),
-                        tx.pure.address(account.address), // This should be attendee address
-                        tx.object(attendeeAccountId),
-                        tx.object(CLOCK_ID),
-                    ],
-                });
+                if (attendeeAccountId) {
+                    tx.moveCall({
+                        target: `${REGISTRY_PACKAGE_ID}::${HADATHA_MODULE}::admin_mint_nft_for_attendee`,
+                        arguments: [
+                            tx.object(eventId),
+                            tx.pure.address(attendeeAddress),
+                            tx.object(attendeeAccountId),
+                            tx.object(CLOCK_ID),
+                        ],
+                    });
+                } else {
+                    tx.moveCall({
+                        target: `${REGISTRY_PACKAGE_ID}::${HADATHA_MODULE}::admin_mint_nft_for_attendee_guest`,
+                        arguments: [
+                            tx.object(eventId),
+                            tx.pure.address(attendeeAddress),
+                            tx.pure.vector("u8", Array.from(new TextEncoder().encode(attendeeName || "Guest Attendee"))),
+                            tx.object(CLOCK_ID),
+                        ],
+                    });
+                }
 
                 const result = await signAndExecuteTransaction({
                     transaction: tx,
@@ -116,21 +125,6 @@ export const useAdminMintNFT = () => {
                 return result;
             } catch (error) {
                 console.error('❌ Error minting NFT for attendee:', error);
-
-                let errorMessage = "Failed to mint NFT for attendee.";
-
-                if (error instanceof Error) {
-                    if (error.message.includes('ENotOrganizer')) {
-                        errorMessage = "Only organizers can mint NFTs for attendees.";
-                    } else if (error.message.includes('ENFTNotEnabled')) {
-                        errorMessage = "NFT minting is not enabled for this event.";
-                    } else if (error.message.includes('ENotCheckedIn')) {
-                        errorMessage = "Attendee must check in before minting NFT.";
-                    } else if (error.message.includes('EAlreadyMintedNFT')) {
-                        errorMessage = "This attendee has already minted their NFT.";
-                    }
-                }
-
                 throw error;
             }
         },
@@ -150,7 +144,7 @@ export const useAdminMintNFT = () => {
 };
 
 // Hook to get user's attendance NFTs
-export const useGetUserAttendanceNFTs = (userAddress?: string) => {
+export const useGetUserAttendanceNFTs = (_userAddress?: string) => {
     // This would typically use a query to fetch NFTs owned by the user
     // You'll need to implement this based on your indexer or Sui client queries
 

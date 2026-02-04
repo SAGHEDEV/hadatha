@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Event } from "@/types"
+import { Event, TicketTier } from "@/types"
 import ModalWrapper from "@/components/miscellneous/ModalWrapper"
 import { useRegisterUser } from "@/hooks/sui/useRegisterUser"
 import { useGetDerivedAddress } from "@/hooks/sui/useCheckAccountExistence"
@@ -15,6 +15,10 @@ import { useCurrentAccount } from "@mysten/dapp-kit"
 import { Loader2 } from "lucide-react"
 import { useState } from "react"
 import StatusModal from "../miscellneous/StatusModal"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { useWalletBalances } from "@/hooks/sui/useWalletBalances"
+import { SUI_TYPE, USDC_TYPE } from "@/lib/constant"
+import { getCurrencyLabel, getFullCurrencyType, formatAmount } from "@/lib/coin"
 
 interface RegistrationModalProps {
     event: Event
@@ -27,6 +31,19 @@ export function RegistrationModal({ event, isOpen, setIsOpen }: RegistrationModa
     const currentAccount = useCurrentAccount();
     const derivedAddress = useGetDerivedAddress(currentAccount?.address);
     const [openEffectModal, setOpenEffectModal] = useState({ open: false, title: "", message: "", type: "success" as "success" | "error" })
+    const [selectedTier, setSelectedTier] = useState<TicketTier | null>(() => {
+        if (event.ticket_tiers && event.ticket_tiers.length === 1) {
+            return event.ticket_tiers[0]
+        }
+        return null
+    })
+
+    const { balances, formattedBalances } = useWalletBalances();
+
+    const isInsufficientBalance = selectedTier && Number(selectedTier.price) > 0 && (
+        (getFullCurrencyType(selectedTier.currency || "SUI") === USDC_TYPE && balances.usdc < BigInt(selectedTier.price)) ||
+        (getFullCurrencyType(selectedTier.currency || "SUI") === SUI_TYPE && balances.sui < BigInt(selectedTier.price))
+    );
 
     // Dynamically generate schema based on event.registration_fields
     const generateSchema = () => {
@@ -61,10 +78,6 @@ export function RegistrationModal({ event, isOpen, setIsOpen }: RegistrationModa
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const onSubmit = async (data: any) => {
-        if (!derivedAddress) {
-            setOpenEffectModal({ open: true, title: "Account not found. Please create an account first.", message: "", type: "error" })
-            return;
-        }
 
         if (!currentAccount) {
             setOpenEffectModal({ open: true, title: "Please connect your wallet first.", message: "", type: "error" })
@@ -86,7 +99,10 @@ export function RegistrationModal({ event, isOpen, setIsOpen }: RegistrationModa
             await registerUser({
                 event: event.id,
                 account: derivedAddress,
-                registrationValues: registrationValues
+                registrationValues: registrationValues,
+                tierIndex: selectedTier ? event.ticket_tiers?.findIndex(t => t.name === selectedTier.name) ?? 0 : 0,
+                price: selectedTier ? Number(selectedTier.price) : 0,
+                currency: selectedTier ? getFullCurrencyType(selectedTier.currency || SUI_TYPE) : SUI_TYPE
             });
 
             setOpenEffectModal({ open: true, title: "Successfully registered for the event!", message: "", type: "success" })
@@ -123,6 +139,39 @@ export function RegistrationModal({ event, isOpen, setIsOpen }: RegistrationModa
                         Please fill out the following information to complete your registration.
                     </p>
                 </div>
+
+                {event.ticket_tiers && event.ticket_tiers.length > 1 && (
+                    <div className="mb-6 space-y-3">
+                        <Label className="text-white">Select Ticket Tier</Label>
+                        <RadioGroup
+                            onValueChange={(val) => {
+                                const tier = event.ticket_tiers?.find(t => t.name === val) || null
+                                setSelectedTier(tier)
+                            }}
+                            className="flex flex-col space-y-2"
+                        >
+                            {event.ticket_tiers.map((tier, index) => (
+                                <div key={index} className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all ${selectedTier?.name === tier.name ? "bg-white/10 border-white" : "bg-white/5 border-white/10 hover:bg-white/10"}`}>
+                                    <div className="flex items-center space-x-3">
+                                        <RadioGroupItem value={tier.name} id={tier.name} className="border-white text-white" />
+                                        <Label htmlFor={tier.name} className="flex flex-col cursor-pointer">
+                                            <span className="font-medium text-white">{tier.name}</span>
+                                            <span className="text-xs text-white/50">{tier.quantity} available</span>
+                                        </Label>
+                                    </div>
+                                    <div className="w-full max-w-fit text-amber-400 font-mono font-medium">
+                                        {Number(tier.price) === 0 ? "Free" : `${formatAmount(tier.price)} ${getCurrencyLabel(tier.currency || "SUI")}`}
+                                    </div>
+                                </div>
+                            ))}
+                        </RadioGroup>
+                        <div className="flex gap-4 mt-2 px-1">
+                            <div className="text-[10px] text-white/40 uppercase tracking-wider">Your Balance:</div>
+                            <div className="text-[10px] text-white/60 font-mono">SUI: {formattedBalances.sui}</div>
+                            <div className="text-[10px] text-white/60 font-mono">USDC: {formattedBalances.usdc}</div>
+                        </div>
+                    </div>
+                )}
 
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
                     {!event.registration_fields || event.registration_fields.length === 0 ? (
@@ -171,12 +220,27 @@ export function RegistrationModal({ event, isOpen, setIsOpen }: RegistrationModa
                         </div>
                         <div className="flex justify-between text-sm">
                             <span className="text-white/60">Price:</span>
-                            <span className="text-white font-medium">{event.price || 'Free'}</span>
+                            <span className="text-white font-medium">
+                                {selectedTier
+                                    ? (Number(selectedTier.price) === 0 ? "Free" : `${formatAmount(selectedTier.price)} ${getCurrencyLabel(selectedTier.currency || "SUI")}`)
+                                    : (event.price === '0' ? 'Free' : event.price || 'Free')
+                                }
+                            </span>
                         </div>
+                        {isInsufficientBalance && (
+                            <div className="p-2 bg-red-500/10 border border-red-500/20 rounded-md">
+                                <p className="text-red-400 text-xs font-medium flex items-center gap-1">
+                                    <span>⚠</span> Insufficient {getCurrencyLabel(selectedTier?.currency || "")} balance
+                                </p>
+                            </div>
+                        )}
                         <div className="flex justify-between text-sm">
                             <span className="text-white/60">Available Spots:</span>
                             <span className="text-white font-medium">
-                                {(event.maxAttendees || 0) - (event.attendeesCount || 0)}
+                                {selectedTier
+                                    ? (selectedTier.quantity || 0)
+                                    : (event.maxAttendees || 0) - (event.attendeesCount || 0)
+                                }
                             </span>
                         </div>
                     </div>
@@ -196,7 +260,7 @@ export function RegistrationModal({ event, isOpen, setIsOpen }: RegistrationModa
                         </Button>
                         <Button
                             type="submit"
-                            disabled={isRegistering}
+                            disabled={isRegistering || isInsufficientBalance || !selectedTier}
                             className="bg-white text-black hover:bg-gray-200 px-6 py-6 cursor-pointer rounded-full disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {isRegistering ? (
@@ -205,7 +269,7 @@ export function RegistrationModal({ event, isOpen, setIsOpen }: RegistrationModa
                                     Registering...
                                 </>
                             ) : (
-                                "Complete Registration"
+                                selectedTier ? `Register as ${selectedTier.name}` : "Complete Registration"
                             )}
                         </Button>
                     </div>

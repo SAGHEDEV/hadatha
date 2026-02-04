@@ -5,12 +5,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Plus, Trash2 } from "lucide-react"
-
-export interface TicketTier {
-    name: string
-    price: string
-    currency: "SUI" | "USDT"
-}
+import { TicketTier } from "@/types"
 
 interface TicketTierSelectorProps {
     value: TicketTier[]
@@ -21,7 +16,7 @@ interface TicketTierSelectorProps {
 export const TicketTierSelector = ({ value = [], onChange, disabled }: TicketTierSelectorProps) => {
 
     const addTier = () => {
-        const newTiers = [...value, { name: "", price: "", currency: "SUI" as const }]
+        const newTiers = [...value, { name: "", price: "", currency: "SUI" as const, quantity: 100 }]
         onChange(newTiers)
     }
 
@@ -30,14 +25,14 @@ export const TicketTierSelector = ({ value = [], onChange, disabled }: TicketTie
         onChange(newTiers)
     }
 
-    const updateTier = (index: number, field: keyof TicketTier, fieldVal: string) => {
+    const updateTier = (index: number, field: keyof TicketTier, fieldVal: string | number) => {
         const newTiers = value.map((tier, i) => {
             if (i === index) {
                 return { ...tier, [field]: fieldVal }
             }
             return tier
         })
-        onChange(newTiers)
+        onChange(newTiers as TicketTier[])
     }
 
     return (
@@ -55,7 +50,7 @@ export const TicketTierSelector = ({ value = [], onChange, disabled }: TicketTie
                         />
                     </div>
 
-                    <div className="w-full md:w-1/3 space-y-2">
+                    <div className="w-full md:w-1/4 space-y-2">
                         <Label className="text-xs text-white/60">Price</Label>
                         <Input
                             type="number"
@@ -68,10 +63,22 @@ export const TicketTierSelector = ({ value = [], onChange, disabled }: TicketTie
                     </div>
 
                     <div className="w-full md:w-1/4 space-y-2">
+                        <Label className="text-xs text-white/60">Quantity</Label>
+                        <Input
+                            type="number"
+                            placeholder="100"
+                            value={tier.quantity}
+                            onChange={(e) => updateTier(index, "quantity", parseInt(e.target.value) || 0)}
+                            disabled={disabled}
+                            className="bg-black/20 border-white/10 text-white placeholder:text-white/30 h-10"
+                        />
+                    </div>
+
+                    <div className="w-full md:w-1/4 space-y-2">
                         <Label className="text-xs text-white/60">Currency</Label>
                         <Select
                             value={tier.currency}
-                            onValueChange={(val: "SUI" | "USDT") => updateTier(index, "currency", val)}
+                            onValueChange={(val: "SUI" | "USDC") => updateTier(index, "currency", val)}
                             disabled={disabled}
                         >
                             <SelectTrigger className="bg-black/20 border-white/10 text-white h-10">
@@ -79,7 +86,7 @@ export const TicketTierSelector = ({ value = [], onChange, disabled }: TicketTie
                             </SelectTrigger>
                             <SelectContent className="bg-black border-white/10 text-white">
                                 <SelectItem value="SUI">SUI</SelectItem>
-                                <SelectItem value="USDT">USDT</SelectItem>
+                                <SelectItem value="USDC">USDC</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
@@ -102,7 +109,7 @@ export const TicketTierSelector = ({ value = [], onChange, disabled }: TicketTie
                 variant="outline"
                 onClick={addTier}
                 disabled={disabled}
-                className="w-full border-dashed border-white/20 text-white/60 hover:text-white hover:bg-white/5 hover:border-white/40 h-12"
+                className="w-full border-dashed bg-white text-black border-white/20 hover:text-white hover:bg-white/5 hover:border-white/40 h-12"
             >
                 <Plus className="w-4 h-4 mr-2" />
                 Add Ticket Tier

@@ -270,7 +270,7 @@ export const RegistrationsTab = () => {
             ) : (
                 <RegistrationTable
                     data={filteredRegistrations}
-                    registrationFields={registrationFields}
+                // registrationFields={registrationFields}
                 />
             )}
         </div>

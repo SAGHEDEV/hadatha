@@ -2,7 +2,7 @@ import { ACCOUNT_ROOT_ID } from "@/lib/constant";
 import { AccountDetails } from "@/types";
 import { useCurrentAccount, useSuiClientQuery } from "@mysten/dapp-kit";
 import { bcs } from "@mysten/sui/bcs";
-import { deriveObjectID } from '@mysten/sui/utils';
+import { deriveObjectID, normalizeSuiAddress } from '@mysten/sui/utils';
 import { bytesToString } from "./useGetAllEvents";
 import { useEffect, useState } from "react";
 
@@ -11,6 +11,10 @@ interface RawAccountFields {
     id: { id: string };
     name: number[];
     email: number[];
+    bio: number[];
+    twitter: number[];
+    github: number[];
+    website: number[];
     image_url: number[];
     owner: number[];
     total_attended: string | number;
@@ -23,11 +27,15 @@ export const useGetDerivedAddress = (address?: string) => {
     const account = useCurrentAccount();
 
     const addressToDerive = address || account?.address;
+
+    // Normalize address to ensure consistency
+    const normalizedAddress = addressToDerive ? normalizeSuiAddress(addressToDerive) : null;
+
     // Derive the address synchronously if account exists
-    const derivedAddress = addressToDerive ? deriveObjectID(
+    const derivedAddress = normalizedAddress ? deriveObjectID(
         ACCOUNT_ROOT_ID,
         'address',
-        bcs.Address.serialize(addressToDerive).toBytes(),
+        bcs.Address.serialize(normalizedAddress).toBytes(),
     ) : null;
 
     return derivedAddress;
@@ -70,7 +78,7 @@ export function useGetDerivedAddresses(addresses: string[]) {
         return () => {
             cancelled = true
         }
-    }, [addresses.join(",")]) // 👈 stable dependency
+    }, [addresses])
 
     return {
         derivedAddresses: derived,
@@ -81,22 +89,21 @@ export function useGetDerivedAddresses(addresses: string[]) {
 
 
 export const useCheckAccountExistence = (address?: string) => {
-    const derivedAddress = useGetDerivedAddress();
+    // If address is provided, derive THAT address, otherwise use current account's derived address
+    const derivedAddress = useGetDerivedAddress(address);
 
-    console.log("Derived address:", derivedAddress);
+    console.log("Derived address for check:", derivedAddress, "Provider address:", address);
 
-    const addressToFind = address || derivedAddress;
-
-    const { data, isLoading, error } = useSuiClientQuery(
+    const { data, isLoading, error, refetch } = useSuiClientQuery(
         "getObject",
         {
-            id: addressToFind || "",
+            id: (derivedAddress as string) || "",
             options: {
                 showContent: true,
             }
         },
         {
-            enabled: !!addressToFind,
+            enabled: !!derivedAddress,
             retry: false,
             staleTime: 1000 * 60 * 5, // 5 minutes
         }
@@ -117,6 +124,7 @@ export const useCheckAccountExistence = (address?: string) => {
             isLoading,
             error,
             account: undefined,
+            refetch,
         };
     }
     const accountDetails: AccountDetails = {
@@ -124,6 +132,10 @@ export const useCheckAccountExistence = (address?: string) => {
         address: bytesToString(rawAccountFields.owner) || "",
         name: bytesToString(rawAccountFields.name),
         email: bytesToString(rawAccountFields.email),
+        bio: bytesToString(rawAccountFields.bio || []),
+        twitter: bytesToString(rawAccountFields.twitter || []),
+        github: bytesToString(rawAccountFields.github || []),
+        website: bytesToString(rawAccountFields.website || []),
         image_url: bytesToString(rawAccountFields.image_url),
         total_attended: Number(rawAccountFields.total_attended),
         total_organized: Number(rawAccountFields.total_organized),
@@ -140,5 +152,6 @@ export const useCheckAccountExistence = (address?: string) => {
         isLoading,
         error,
         account: accountDetails,
+        refetch,
     };
 };

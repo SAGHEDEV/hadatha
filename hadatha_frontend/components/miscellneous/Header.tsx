@@ -24,6 +24,7 @@ const Header = () => {
         { name: "Dashboard", href: "/dashboard", disabled: !currentAccount },
         { name: "Events", href: "/events", disabled: false },
         { name: "Create Event", href: "/events/create", disabled: !currentAccount },
+        // { name: "Profile", href: "/profile", disabled: !currentAccount },
     ]
 
     const handleDisconnect = () => {
@@ -191,8 +192,8 @@ const Header = () => {
                                 onClick={() => handleNavClick(link.href, link.disabled)}
                                 disabled={link.disabled}
                                 className={`text-left px-4 py-3 rounded-xl text-base font-medium transition-all ${pathname === link.href
-                                        ? "bg-white/10 text-white"
-                                        : "text-white/60 hover:bg-white/5 hover:text-white"
+                                    ? "bg-white/10 text-white"
+                                    : "text-white/60 hover:bg-white/5 hover:text-white"
                                     } ${link.disabled ? "text-white/30 cursor-not-allowed" : "cursor-pointer"}`}
                             >
                                 {link.name}

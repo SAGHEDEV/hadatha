@@ -60,14 +60,14 @@ export function CreateEventForm({ isLoading }: { isLoading: boolean }) {
     }
 
     return (
-        <div className="space-y-8 max-w-4xl mx-auto pb-20">
-            {/* Event Details Section */}
-            <div className="space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 pb-20">
+            {/* Left Sticky Column */}
+            <div className="lg:col-span-6 lg:sticky mt-0 top-24 h-fit space-y-6">
                 <h2 className="text-2xl font-bold text-white">Event Details</h2>
 
                 {/* Image Upload */}
                 <div className={cn(
-                    "relative h-64 w-full rounded-3xl border-2 border-dashed border-white/20 bg-white/5 overflow-hidden group transition-colors",
+                    "relative aspect-square w-full rounded-3xl border-2 border-dashed border-white/20 bg-white/5 overflow-hidden group transition-colors",
                     !isLoading && "hover:border-white/40",
                     isLoading && "opacity-50 cursor-not-allowed"
                 )}>
@@ -108,82 +108,168 @@ export function CreateEventForm({ isLoading }: { isLoading: boolean }) {
                         </FormItem>
                     )}
                 />
-
-                <FormField
-                    control={control}
-                    name="description"
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel className="text-white">Description</FormLabel>
-                            <FormControl>
-                                <Textarea
-                                    disabled={isLoading}
-                                    placeholder="Tell us about your event..."
-                                    {...field}
-                                    value={field.value ?? ''}
-                                    className="bg-white/5 border-white/10 text-white placeholder:text-white/40 focus:border-white/30 min-h-[150px] resize-y"
-                                />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                />
             </div>
 
-            {/* Logistics Section */}
-            <div className="space-y-6 pt-8 border-t border-white/10">
-                <h2 className="text-2xl font-bold text-white">Logistics</h2>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Right Scrollable Column */}
+            <div className="lg:col-span-6 space-y-8">
+                <div className="space-y-6">
+                    <h2 className="text-2xl font-bold text-white">Event Configuration</h2>
                     <FormField
                         control={control}
-                        name="organizer"
+                        name="description"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel className="text-white">Organizers (Co-hosts)</FormLabel>
+                                <FormLabel className="text-white">Description</FormLabel>
                                 <FormControl>
-                                    <OrganizerSelector value={field.value || []} onChange={field.onChange} disabled={isLoading} />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-
-                    <FormField
-                        control={control}
-                        name="tags"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel className="text-white">Tags</FormLabel>
-                                <FormControl>
-                                    <TagMultiSelect
-                                        value={field.value || []}
-                                        onChange={field.onChange}
+                                    <Textarea
                                         disabled={isLoading}
+                                        placeholder="Tell us about your event..."
+                                        {...field}
+                                        value={field.value ?? ''}
+                                        className="bg-white/5 border-white/10 text-white placeholder:text-white/40 focus:border-white/30 min-h-[150px] resize-y"
                                     />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
                         )}
                     />
+                </div>
 
-                    <div className="col-span-2">
+                {/* Logistics Section */}
+                <div className="space-y-6 pt-8 border-t border-white/10">
+                    <h2 className="text-2xl font-bold text-white">Logistics</h2>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <FormField
                             control={control}
-                            name="location"
+                            name="organizer"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel className="text-white">Location</FormLabel>
+                                    <FormLabel className="text-white">Organizers (Co-hosts)</FormLabel>
                                     <FormControl>
-                                        <LocationPicker
-                                            value={field.value}
-                                            onLocationSelect={(address, lat, lng) => {
-                                                field.onChange(address)
-                                                setValue("location_lat", lat)
-                                                setValue("location_lng", lng)
-                                            }}
+                                        <OrganizerSelector value={field.value || []} onChange={field.onChange} disabled={isLoading} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+
+                        <FormField
+                            control={control}
+                            name="tags"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel className="text-white">Tags</FormLabel>
+                                    <FormControl>
+                                        <TagMultiSelect
+                                            value={field.value || []}
+                                            onChange={field.onChange}
                                             disabled={isLoading}
                                         />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+
+                        <div className="col-span-2">
+                            <FormField
+                                control={control}
+                                name="location"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel className="text-white">Location</FormLabel>
+                                        <FormControl>
+                                            <LocationPicker
+                                                value={field.value}
+                                                onLocationSelect={(address, lat, lng) => {
+                                                    field.onChange(address)
+                                                    setValue("location_lat", lat)
+                                                    setValue("location_lng", lng)
+                                                }}
+                                                disabled={isLoading}
+                                            />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <FormField
+                            control={control}
+                            name="date"
+                            render={({ field }) => (
+                                <FormItem className="flex flex-col">
+                                    <FormLabel className="text-white">Date</FormLabel>
+                                    <Popover>
+                                        <PopoverTrigger asChild>
+                                            <FormControl>
+                                                <Button
+                                                    disabled={isLoading}
+                                                    variant={"outline"}
+                                                    className={cn(
+                                                        "w-full pl-3 text-left font-normal bg-white/5 border-white/10 text-white hover:bg-white/10 hover:text-white h-12",
+                                                        !field.value && "text-muted-foreground"
+                                                    )}
+                                                >
+                                                    {field.value ? (
+                                                        format(field.value, "PPP")
+                                                    ) : (
+                                                        <span>Pick a date</span>
+                                                    )}
+                                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                                </Button>
+                                            </FormControl>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-auto p-0 bg-black border-white/10" align="start">
+                                            <Calendar
+                                                mode="single"
+                                                selected={field.value}
+                                                onSelect={field.onChange}
+                                                // disabled={(date) =>
+                                                //     date < new Date()
+                                                // }
+                                                initialFocus
+                                                className="text-white bg-black!"
+                                            />
+                                        </PopoverContent>
+                                    </Popover>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+
+                        <FormField
+                            control={control}
+                            name="startTime"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel className="text-white">Start Time</FormLabel>
+                                    <FormControl>
+                                        <div className="relative">
+                                            <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50" />
+                                            <Input disabled={isLoading} type="time" {...field} value={field.value ?? ''} className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-white/40 focus:border-white/30 block h-12" />
+                                        </div>
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+
+                        <FormField
+                            control={control}
+                            name="endTime"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel className="text-white">End Time</FormLabel>
+                                    <FormControl>
+                                        <div className="relative">
+                                            <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50" />
+                                            <Input disabled={isLoading} type="time" {...field} value={field.value ?? ''} className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-white/40 focus:border-white/30 block h-12" />
+                                        </div>
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -192,199 +278,119 @@ export function CreateEventForm({ isLoading }: { isLoading: boolean }) {
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <FormField
-                        control={control}
-                        name="date"
-                        render={({ field }) => (
-                            <FormItem className="flex flex-col">
-                                <FormLabel className="text-white">Date</FormLabel>
-                                <Popover>
-                                    <PopoverTrigger asChild>
-                                        <FormControl>
-                                            <Button
-                                                disabled={isLoading}
-                                                variant={"outline"}
-                                                className={cn(
-                                                    "w-full pl-3 text-left font-normal bg-white/5 border-white/10 text-white hover:bg-white/10 hover:text-white h-12",
-                                                    !field.value && "text-muted-foreground"
-                                                )}
-                                            >
-                                                {field.value ? (
-                                                    format(field.value, "PPP")
-                                                ) : (
-                                                    <span>Pick a date</span>
-                                                )}
-                                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                            </Button>
-                                        </FormControl>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-auto p-0 bg-black border-white/10" align="start">
-                                        <Calendar
-                                            mode="single"
-                                            selected={field.value}
-                                            onSelect={field.onChange}
-                                            // disabled={(date) =>
-                                            //     date < new Date()
-                                            // }
-                                            initialFocus
-                                            className="text-white bg-black!"
-                                        />
-                                    </PopoverContent>
-                                </Popover>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
+                {/* Ticketing Section */}
+                <div className="space-y-6 pt-8 border-t border-white/10">
+                    <h2 className="text-2xl font-bold text-white">Ticketing</h2>
 
                     <FormField
                         control={control}
-                        name="startTime"
+                        name="ticketType"
                         render={({ field }) => (
-                            <FormItem>
-                                <FormLabel className="text-white">Start Time</FormLabel>
+                            <FormItem className="space-y-4">
+                                <FormLabel className="text-sm font-bold text-white/50 uppercase tracking-widest">Select Ticket Type</FormLabel>
                                 <FormControl>
-                                    <div className="relative">
-                                        <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50" />
-                                        <Input disabled={isLoading} type="time" {...field} value={field.value ?? ''} className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-white/40 focus:border-white/30 block h-12" />
-                                    </div>
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-
-                    <FormField
-                        control={control}
-                        name="endTime"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel className="text-white">End Time</FormLabel>
-                                <FormControl>
-                                    <div className="relative">
-                                        <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50" />
-                                        <Input disabled={isLoading} type="time" {...field} value={field.value ?? ''} className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-white/40 focus:border-white/30 block h-12" />
-                                    </div>
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                </div>
-            </div>
-
-            {/* Ticketing Section */}
-            <div className="space-y-6 pt-8 border-t border-white/10">
-                <h2 className="text-2xl font-bold text-white">Ticketing</h2>
-
-                <FormField
-                    control={control}
-                    name="ticketType"
-                    render={({ field }) => (
-                        <FormItem className="space-y-4">
-                            <FormLabel className="text-sm font-bold text-white/50 uppercase tracking-widest">Select Ticket Type</FormLabel>
-                            <FormControl>
-                                <RadioGroup
-                                    onValueChange={field.onChange}
-                                    defaultValue={field.value}
-                                    className="grid grid-cols-1 sm:grid-cols-2 gap-4"
-                                    disabled={isLoading}
-                                >
-                                    <div>
-                                        <RadioGroupItem
-                                            value="free"
-                                            id="free"
-                                            className="peer sr-only"
-                                        />
-                                        <label
-                                            htmlFor="free"
-                                            className="flex flex-col items-center justify-center p-8 rounded-3xl border-2 border-white/5 bg-white/5 hover:bg-white/10 hover:border-white/10 peer-data-[state=checked]:border-white peer-data-[state=checked]:bg-white/10 transition-all cursor-pointer group"
-                                        >
-                                            <div className="w-14 h-14 rounded-full bg-white/5 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                                                <Ticket className="w-7 h-7 text-white/40 peer-data-[state=checked]:group-[]:text-white" />
-                                            </div>
-                                            <div className="text-center">
-                                                <h4 className="font-bold text-white text-lg">Free Event</h4>
-                                                <p className="text-xs text-white/40 mt-1">Attendees join without any cost</p>
-                                            </div>
-                                        </label>
-                                    </div>
-
-                                    <div>
-                                        <RadioGroupItem
-                                            value="paid"
-                                            id="paid"
-                                            className="peer sr-only"
-                                        />
-                                        <label
-                                            htmlFor="paid"
-                                            className="flex flex-col items-center justify-center p-8 rounded-3xl border-2 border-white/5 bg-white/5 hover:bg-white/10 hover:border-white/10 peer-data-[state=checked]:border-white peer-data-[state=checked]:bg-white/10 transition-all cursor-pointer group"
-                                        >
-                                            <div className="w-14 h-14 rounded-full bg-white/5 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                                                <Coins className="w-7 h-7 text-white/40 peer-data-[state=checked]:group-[]:text-white" />
-                                            </div>
-                                            <div className="text-center">
-                                                <h4 className="font-bold text-white text-lg">Paid Event</h4>
-                                                <p className="text-xs text-white/40 mt-1">Requires registration fee in SUI or USDC</p>
-                                            </div>
-                                        </label>
-                                    </div>
-                                </RadioGroup>
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                />
-
-                {watch("ticketType") === "paid" && (
-                    <FormField
-                        control={control}
-                        name="ticketTiers"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel className="text-white">Ticket Tiers</FormLabel>
-                                <FormControl>
-                                    <TicketTierSelector
-                                        value={field.value || []}
-                                        onChange={field.onChange}
+                                    <RadioGroup
+                                        onValueChange={field.onChange}
+                                        defaultValue={field.value}
+                                        className="grid grid-cols-1 sm:grid-cols-2 gap-4"
                                         disabled={isLoading}
+                                    >
+                                        <div>
+                                            <RadioGroupItem
+                                                value="free"
+                                                id="free"
+                                                className="peer sr-only"
+                                            />
+                                            <label
+                                                htmlFor="free"
+                                                className="flex flex-col items-center justify-center p-8 rounded-3xl border-2 border-white/5 bg-white/5 hover:bg-white/10 hover:border-white/10 peer-data-[state=checked]:border-white peer-data-[state=checked]:bg-white/10 transition-all cursor-pointer group"
+                                            >
+                                                <div className="w-14 h-14 rounded-full bg-white/5 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                                                    <Ticket className="w-7 h-7 text-white/40 peer-data-[state=checked]:group-[]:text-white" />
+                                                </div>
+                                                <div className="text-center">
+                                                    <h4 className="font-bold text-white text-lg">Free Event</h4>
+                                                    <p className="text-xs text-white/40 mt-1">Attendees join without any cost</p>
+                                                </div>
+                                            </label>
+                                        </div>
+
+                                        <div>
+                                            <RadioGroupItem
+                                                value="paid"
+                                                id="paid"
+                                                className="peer sr-only"
+                                            />
+                                            <label
+                                                htmlFor="paid"
+                                                className="flex flex-col items-center justify-center p-8 rounded-3xl border-2 border-white/5 bg-white/5 hover:bg-white/10 hover:border-white/10 peer-data-[state=checked]:border-white peer-data-[state=checked]:bg-white/10 transition-all cursor-pointer group"
+                                            >
+                                                <div className="w-14 h-14 rounded-full bg-white/5 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                                                    <Coins className="w-7 h-7 text-white/40 peer-data-[state=checked]:group-[]:text-white" />
+                                                </div>
+                                                <div className="text-center">
+                                                    <h4 className="font-bold text-white text-lg">Paid Event</h4>
+                                                    <p className="text-xs text-white/40 mt-1">Requires registration fee in SUI or USDC</p>
+                                                </div>
+                                            </label>
+                                        </div>
+                                    </RadioGroup>
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+
+                    {watch("ticketType") === "paid" && (
+                        <FormField
+                            control={control}
+                            name="ticketTiers"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel className="text-white">Ticket Tiers</FormLabel>
+                                    <FormControl>
+                                        <TicketTierSelector
+                                            value={field.value || []}
+                                            onChange={field.onChange}
+                                            disabled={isLoading}
+                                        />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    )}
+
+                    <FormField
+                        control={control}
+                        name="maxAttendees"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel className="text-white">Maximum Attendees (Total)</FormLabel>
+                                <FormControl>
+                                    <Input
+                                        disabled={isLoading || watch("ticketType") === "paid"}
+                                        type="number"
+                                        placeholder="e.g., 100"
+                                        {...field}
+                                        value={field.value ?? ''}
+                                        onChange={(e) => field.onChange(e.target.valueAsNumber)}
+                                        className="bg-white/5 border-white/10 text-white placeholder:text-white/40 focus:border-white/30 h-12"
                                     />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
                         )}
                     />
-                )}
+                </div>
 
-                <FormField
-                    control={control}
-                    name="maxAttendees"
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel className="text-white">Maximum Attendees (Total)</FormLabel>
-                            <FormControl>
-                                <Input
-                                    disabled={isLoading || watch("ticketType") === "paid"}
-                                    type="number"
-                                    placeholder="e.g., 100"
-                                    {...field}
-                                    value={field.value ?? ''}
-                                    onChange={(e) => field.onChange(e.target.valueAsNumber)}
-                                    className="bg-white/5 border-white/10 text-white placeholder:text-white/40 focus:border-white/30 h-12"
-                                />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                />
-            </div>
+                {/* Registration Section */}
+                <div className="space-y-6 pt-8 border-t border-white/10">
+                    <h2 className="text-2xl font-bold text-white">Registration Details</h2>
+                    <p className="text-white/60 text-sm">Customize the information you want to collect from attendees.</p>
 
-            {/* Registration Section */}
-            <div className="space-y-6 pt-8 border-t border-white/10">
-                <h2 className="text-2xl font-bold text-white">Registration Details</h2>
-                <p className="text-white/60 text-sm">Customize the information you want to collect from attendees.</p>
-
-                <CustomFieldsBuilder disabled={isLoading} />
+                    <CustomFieldsBuilder disabled={isLoading} />
+                </div>
             </div>
         </div>
     )

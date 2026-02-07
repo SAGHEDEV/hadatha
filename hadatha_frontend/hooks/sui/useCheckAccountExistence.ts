@@ -3,6 +3,7 @@ import { AccountDetails } from "@/types";
 import { useCurrentAccount, useSuiClientQuery } from "@mysten/dapp-kit";
 import { bcs } from "@mysten/sui/bcs";
 import { deriveObjectID, normalizeSuiAddress } from '@mysten/sui/utils';
+import { toHEX } from '@mysten/sui/utils';
 import { bytesToString } from "./useGetAllEvents";
 import { useEffect, useState } from "react";
 
@@ -129,7 +130,7 @@ export const useCheckAccountExistence = (address?: string) => {
     }
     const accountDetails: AccountDetails = {
         id: rawAccountFields.id.id,
-        address: bytesToString(rawAccountFields.owner) || "",
+                address: normalizeSuiAddress(toHEX(Uint8Array.from(rawAccountFields.owner))),
         name: bytesToString(rawAccountFields.name),
         email: bytesToString(rawAccountFields.email),
         bio: bytesToString(rawAccountFields.bio || []),

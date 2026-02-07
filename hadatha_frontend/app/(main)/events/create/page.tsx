@@ -260,8 +260,8 @@ export default function CreateEventPage() {
 
             <FormProvider {...methods}>
                 <Tabs defaultValue="create" className="w-full space-y-8">
-                    <div className="flex justify-center">
-                        <TabsList className="bg-white/5 border border-white/10 px-4 py-6 min-h-[72px] rounded-full flex gap-2">
+                    <div className="w-full flex justify-center">
+                        <TabsList className="w-full bg-white/5 border border-white/10 px-4 py-6 min-h-[72px] rounded-full flex gap-2">
                             <TabsTrigger
                                 value="create"
                                 className="rounded-full px-6 py-6 cursor-pointer data-[state=active]:bg-white data-[state=active]:text-black hover:bg-white/20 data-[state=active]:hover:bg-gray-200 data-[state=active]:hover:text-black hover:textblack data-[state=active]:font-semibold text-white/60 transition-all"

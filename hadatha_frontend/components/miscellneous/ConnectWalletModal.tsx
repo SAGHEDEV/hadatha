@@ -49,24 +49,18 @@ const ConnectWalletModal = ({ open, setOpen, redirectUrl }: { open: boolean, set
 
             // Small delay for UX, then redirect
             const timeoutId = setTimeout(() => {
+                const isPublicEventPage = redirectUrl?.startsWith("/events/") && !redirectUrl.startsWith("/events/create");
+
                 if (hasAccount) {
                     // User has account - redirect to original destination or dashboard
                     const destination = redirectUrl && redirectUrl !== "/" ? redirectUrl : "/dashboard";
                     router.push(destination);
+                } else if (isPublicEventPage) {
+                    // User doesn't have an account, but it's a public event page, so let them through for guest registration
+                    router.push(redirectUrl!);
                 } else {
-                    // User doesn't have account - check if they should go to create account or stay/go to redirectUrl
-                    const isPublicPage = redirectUrl?.startsWith("/events/") && !redirectUrl.startsWith("/events/create");
-
-                    if (isPublicPage) {
-                        // For public event pages, stay/go to the event page to allow guest registration
-                        router.push(redirectUrl!);
-                    } else if (redirectUrl && redirectUrl !== "/") {
-                        // For other specific pages, try to go there
-                        router.push(redirectUrl);
-                    } else {
-                        // Default to create account if on home page or no specific redirect
-                        router.push("/create-account");
-                    }
+                    // User doesn't have an account and it's not a public event page, so send to create account
+                    router.push("/create-account");
                 }
             }, 300);
 

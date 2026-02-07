@@ -29,6 +29,7 @@ export function EventPreview() {
         location: values.location || "Location",
         date: values.date ? format(values.date, "PPP") : "Date",
         imageUrl: imageUrl,
+        event_hex: "preview-hex",
         organizers: isLoadingOrganizers
             ? organizerAddresses.map((addr: string) => ({
                 name: "Loading...",

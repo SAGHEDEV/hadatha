@@ -1,7 +1,7 @@
 "use client";
 
 import EventDetails from "@/components/miscellneous/EventDetails";
-import { useGetEventByIdWithAttendees } from "@/hooks/sui/useGetAllEvents";
+import { useGetEventByIdWithAttendees, useGetEventByHex } from "@/hooks/sui/useGetAllEvents";
 import { useParams } from "next/navigation";
 import LoadingState from "@/components/miscellneous/LoadingState";
 
@@ -9,8 +9,24 @@ const EventDetailsPage = () => {
     const params = useParams();
     const id = params.id as string;
 
-    const { event, isLoading, error } = useGetEventByIdWithAttendees(id, 1000);
-    console.log(event)
+    // Check if the id is an object ID (starts with 0x)
+    const isObjectId = id.startsWith('0x');
+
+    const {
+        event: objectEvent,
+        isLoading: objectLoading,
+        error: objectError
+    } = useGetEventByIdWithAttendees(isObjectId ? id : "", 1000);
+
+    const {
+        event: hexEvent,
+        isLoading: hexLoading,
+        error: hexError
+    } = useGetEventByHex(!isObjectId ? id : "", 1000);
+
+    const isLoading = isObjectId ? objectLoading : hexLoading;
+    const error = isObjectId ? objectError : hexError;
+    const event = isObjectId ? objectEvent : hexEvent;
 
     if (isLoading) {
         return (
@@ -31,6 +47,7 @@ const EventDetailsPage = () => {
         return (
             <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
                 <h2 className="text-2xl font-bold text-white">Event not found</h2>
+                <p className="text-white/60">We couldn&apos;t find an event with the ID or hex &quot;{id}&quot;</p>
             </div>
         );
     }

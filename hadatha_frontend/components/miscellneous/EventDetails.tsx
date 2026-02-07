@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
+import LaunchAppBtn from "./LaunchAppBtn";
 import { RegistrationModal } from "@/components/events/RegistrationModal";
 import CheckInModal from "../events/CheckinModal";
 import ShareModal from "./ShareModal";
@@ -86,8 +87,17 @@ const EventDetails = ({
         currentAccount?.address &&
         event?.attendeeDetails?.some(
             (attendee) =>
-                attendee.address === currentAccount?.address && attendee?.checkedIn
+                normalizeSuiAddress(attendee.address) === normalizeSuiAddress(currentAccount?.address || "") && attendee?.checkedIn
         );
+
+    // Find attendee detail for current user to get their ticket tier
+    const userAttendeeDetail = event?.attendeeDetails?.find(
+        (attendee) => normalizeSuiAddress(attendee.address) === normalizeSuiAddress(currentAccount?.address || "")
+    );
+
+    const userTicketTierName = userAttendeeDetail && event.ticket_tiers && event.ticket_tiers[userAttendeeDetail.ticketTierIndex]
+        ? event.ticket_tiers[userAttendeeDetail.ticketTierIndex].name
+        : null;
 
     // Check if user has minted NFT
     const hasMinNFT =
@@ -269,7 +279,21 @@ const EventDetails = ({
                 {/* Right Column - Sticky Sidebar */}
                 <div className="lg:col-span-4 flex flex-col gap-6">
                     <div className="sticky top-32 p-6 rounded-3xl bg-white/5 backdrop-blur-xl border border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.36)] flex flex-col gap-6">
-                        <h3 className="text-xl font-bold text-white">Event Details</h3>
+                        <div className="flex flex-col gap-2">
+                            <h3 className="text-xl font-bold text-white">Event Details</h3>
+                            {event.event_hex && (
+                                <div className="flex items-center gap-2">
+                                    <span className="text-white/40 text-xs font-mono">ID: {event.event_hex}</span>
+                                    <Link
+                                        href={`https://suiscan.xyz/mainnet/object/${event.id}`}
+                                        target="_blank"
+                                        className="text-[10px] text-blue-400 hover:text-blue-300 underline"
+                                    >
+                                        View on Explorer
+                                    </Link>
+                                </div>
+                            )}
+                        </div>
 
                         <div className="flex flex-col gap-4">
                             <div className="flex items-start gap-4">
@@ -353,11 +377,23 @@ const EventDetails = ({
                         {/* Show different buttons based on user role */}
                         <div className="flex flex-col gap-4">
                             {!currentAccount && (
-                                <>
-                                    <p className="text-center text-sm text-white/70">
-                                        Please connect your wallet to register for this event.
-                                    </p>
-                                </>
+                                <div className="flex flex-col gap-4 items-center p-6 bg-white/5 rounded-3xl border border-white/10 text-center">
+                                    <div className="p-3 rounded-2xl bg-white/5 border border-white/10 mb-2">
+                                        <Users className="w-6 h-6 text-white/40" />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <p className="text-white font-bold text-lg">Connect Wallet to Register</p>
+                                        <p className="text-sm text-white/60">
+                                            Connect your wallet to register for this event as a guest or member.
+                                        </p>
+                                    </div>
+                                    <div className="w-full pt-2">
+                                        <LaunchAppBtn
+                                            buttonText="Connect Wallet"
+                                            redirectUrl={`/events/${event.id}`}
+                                        />
+                                    </div>
+                                </div>
                             )}
 
                             {/* Buttons for regular users (non-organizers) */}
@@ -377,7 +413,7 @@ const EventDetails = ({
                                     {/* Already Registered Message */}
                                     {isRegistered && !isCheckedIn && (
                                         <div className="w-full rounded-full py-3 text-lg font-semibold bg-green-600/10 text-green-400 border border-green-500/50 text-center">
-                                            ✓ You&apos;re Registered
+                                            ✓ Registered {userTicketTierName ? `as ${userTicketTierName}` : ""}
                                         </div>
                                     )}
 
@@ -385,7 +421,7 @@ const EventDetails = ({
                                     {isCheckedIn && (
                                         <div className="w-full rounded-full py-3 text-lg font-semibold bg-blue-600/10 text-blue-400 border border-blue-500/50 text-center flex items-center justify-center gap-2">
                                             <CheckCircle className="w-5 h-5" />
-                                            Already Checked In
+                                            Checked In {userTicketTierName ? `(${userTicketTierName})` : ""}
                                         </div>
                                     )}
 
@@ -425,7 +461,7 @@ const EventDetails = ({
                                             onClick={() =>
                                                 mintNFT({
                                                     eventId: event.id,
-                                                    accountId: derivedAddress!,
+                                                    accountId: derivedAddress || null,
                                                 })
                                             }
                                             disabled={preview || isMinting}

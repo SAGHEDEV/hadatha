@@ -56,7 +56,7 @@ const CreateAccountForm = () => {
         await createAccount({
             name: data.fullName,
             email: data.email,
-            image_url: image_url
+            imageUrl: image_url
         }).then(() => {
             setOpenEffectModal({ open: true, status: "success", message: "Account created successfully", description: "You will be redirected to dashboard in a few seconds" })
         }).catch((err) => {

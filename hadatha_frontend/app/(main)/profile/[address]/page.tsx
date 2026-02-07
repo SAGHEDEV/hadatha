@@ -17,6 +17,8 @@ export default function PublicProfilePage() {
     const { hasAccount, isLoading, account } = useCheckAccountExistence(address)
     const { events: organizedEvents, isLoading: organizedLoading } = useGetEventsByOrganizer(address || "")
 
+    // If account doesn't exist, we'll still show the page but with default/guest data
+    // We only show the loader while checking
     if (isLoading) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
@@ -26,22 +28,9 @@ export default function PublicProfilePage() {
         )
     }
 
-    if (!hasAccount) {
-        return (
-            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 text-center px-6">
-                <div className="w-24 h-24 rounded-full bg-white/5 flex items-center justify-center mb-2">
-                    <LayoutDashboard className="w-12 h-12 text-white/10" />
-                </div>
-                <div>
-                    <h2 className="text-2xl font-bold text-white mb-2">Profile Not Found</h2>
-                    <p className="text-white/40 max-w-md mx-auto">This address hasn&apos;t initialized an on-chain profile yet on Hadatha.</p>
-                </div>
-                <div className="p-4 bg-black/40 border border-white/5 rounded-2xl backdrop-blur-md">
-                    <code className="text-xs text-amber-400 font-mono">{address}</code>
-                </div>
-            </div>
-        )
-    }
+    const displayName = account?.name || "Anonymous User"
+    const displayEmail = account?.email || "No email provided"
+    const displayBio = account?.bio || "This user hasn't added a bio yet."
 
     return (
         <div className="max-w-7xl mx-auto py-12 px-6">
@@ -61,13 +50,13 @@ export default function PublicProfilePage() {
                                 {account?.image_url ? (
                                     <Image
                                         src={account.image_url}
-                                        alt={account.name}
+                                        alt={displayName}
                                         fill
                                         className="object-cover"
                                     />
                                 ) : (
                                     <div className="w-full h-full flex items-center justify-center text-white/40 text-4xl sm:text-5xl font-bold">
-                                        {account?.name.charAt(0).toUpperCase()}
+                                        {displayName.charAt(0).toUpperCase()}
                                     </div>
                                 )}
                             </div>
@@ -77,17 +66,19 @@ export default function PublicProfilePage() {
                                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-3">
                                     <div className="flex flex-col md:flex-row items-start md:items-center gap-3 w-full">
                                         <h1 className="text-2xl md:text-3xl lg:text-4xl font-black text-white tracking-tight wrap-break-word max-w-full">
-                                            {account?.name}
+                                            {displayName}
                                         </h1>
-                                        <div className="px-3 py-1.5 bg-white/10 border border-white/20 rounded-full text-[10px] text-white/60 font-bold uppercase tracking-widest flex items-center gap-1.5 whitespace-nowrap shrink-0">
-                                            <Award className="w-3.5 h-3.5 text-white/40" />
-                                            On-chain Identity
-                                        </div>
+                                        {hasAccount && (
+                                            <div className="px-3 py-1.5 bg-white/10 border border-white/20 rounded-full text-[10px] text-white/60 font-bold uppercase tracking-widest flex items-center gap-1.5 whitespace-nowrap shrink-0">
+                                                <Award className="w-3.5 h-3.5 text-white/40" />
+                                                On-chain Identity
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
 
                                 <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 text-sm">
-                                    <p className="text-white/60 font-medium truncate max-w-full">{account?.email}</p>
+                                    <p className="text-white/60 font-medium truncate max-w-full">{displayEmail}</p>
                                     <span className="hidden sm:block w-1 h-1 rounded-full bg-white/20" />
                                     <div className="flex items-center gap-2 text-white/40 text-sm shrink-0">
                                         <Calendar className="w-3.5 h-3.5" />
@@ -111,7 +102,7 @@ export default function PublicProfilePage() {
                                     About
                                 </h3>
                                 <p className="text-white/80 leading-relaxed text-sm">
-                                    {account?.bio || "Not added..."}
+                                    {displayBio}
                                 </p>
                             </div>
 

@@ -190,6 +190,7 @@ export default function EditEventPage() {
                 startTime: startDateTime.getTime(),
                 endTime: endDateTime.getTime(),
                 imageUrl: image_url,
+                event_hex: event?.event_hex || "",
                 registrationFieldNames,
                 registrationFieldTypes,
                 maxAttendees: data.maxAttendees,

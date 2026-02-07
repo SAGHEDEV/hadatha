@@ -13,10 +13,11 @@ interface EventCardProps {
     organizers: {
         name: string
         avatarUrl: string
-    }[]
+    }[];
+    event_hex?: string;
 }
 
-const EventCard = ({ title, date, location, imageUrl, attendeesCount = 0, organizers, id }: EventCardProps) => {
+const EventCard = ({ title, date, location, imageUrl, attendeesCount = 0, organizers, id, event_hex }: EventCardProps) => {
     const mainOrganizer = organizers?.[0] || { name: "Unknown", avatarUrl: "" };
 
     return (
@@ -60,7 +61,7 @@ const EventCard = ({ title, date, location, imageUrl, attendeesCount = 0, organi
                         </div>
                         <span className="text-xs text-white/60">By <span className="text-white hover:underline cursor-pointer">{mainOrganizer.name}</span></span>
                     </div>
-                    <Link href={`/events/${id}`} className="py-2 px-3 text-xs bg-white text-black hover:bg-gray-200 active:scale-95 transition-all duration-300 cursor-pointer hover:scale-105 rounded-full">
+                    <Link href={`/events/${event_hex || id}`} className="py-2 px-3 text-xs bg-white text-black hover:bg-gray-200 active:scale-95 transition-all duration-300 cursor-pointer hover:scale-105 rounded-full">
                         View Details
                     </Link>
                 </div>

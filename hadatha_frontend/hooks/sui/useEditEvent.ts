@@ -11,6 +11,7 @@ interface EditEventParams {
     startTime: number;
     endTime: number;
     imageUrl: string;
+    event_hex: string;
     registrationFieldNames: string[];
     registrationFieldTypes: string[];
     organizers: string[];
@@ -42,6 +43,7 @@ export const useEditEvent = () => {
                         tx.pure.u64(params.startTime),
                         tx.pure.u64(params.endTime),
                         tx.pure.string(params.imageUrl),
+                        tx.pure.string(params.event_hex),
                         tx.pure.u64(params.maxAttendees),
                         tx.pure.vector("string", params.registrationFieldNames),
                         tx.pure.vector("string", params.registrationFieldTypes),

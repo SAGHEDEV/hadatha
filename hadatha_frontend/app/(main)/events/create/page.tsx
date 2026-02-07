@@ -8,15 +8,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { CreateEventForm } from "@/components/events/create/CreateEventForm"
 import { EventPreview } from "@/components/events/create/EventPreview"
 import { Button } from "@/components/ui/button"
-import { Eye, Edit3, Save } from "lucide-react"
+import { Eye, Edit3, Save, Loader2, Users } from "lucide-react"
 import LaunchAppBtn from "@/components/miscellneous/LaunchAppBtn"
 import { useCurrentAccount } from "@mysten/dapp-kit"
 import { usePathname, useRouter } from "next/navigation"
 import { useCreateEvent } from "@/hooks/sui/useCreateEvent"
 import { useUploadToWalrus } from "@/hooks/useUploadToWalrus"
-import { useGetDerivedAddress } from "@/hooks/sui/useCheckAccountExistence"
+import { useCheckAccountExistence, useGetDerivedAddress } from "@/hooks/sui/useCheckAccountExistence"
 import { useState } from "react"
 import StatusModal from "@/components/miscellneous/StatusModal"
+import { generateEventHex } from "@/lib/utils"
 
 const eventSchema = z.object({
     title: z.string().min(2, "Title must be at least 2 characters"),
@@ -69,11 +70,18 @@ export default function CreateEventPage() {
 
 
 
+    const { hasAccount, isLoading: isAccountLoading } = useCheckAccountExistence()
+
     const onSubmit = async (data: z.infer<typeof eventSchema>) => {
         console.log("Form Data:", data)
 
-        if (!derivedAddress) {
-            alert("Account not found. Please connect your wallet.");
+        if (!hasAccount) {
+            setOpenEffectModal({
+                open: true,
+                title: "Account Required",
+                message: "You need to create a Hadatha profile to host events. Please join Hadatha first.",
+                type: "error"
+            })
             return;
         }
 
@@ -105,8 +113,12 @@ export default function CreateEventPage() {
             console.log(registrationFieldNames)
             console.log(registrationFieldTypes)
 
-            // Prepare Tags (include lat/lng)
+            // Generate event_hex
+            const event_hex = generateEventHex();
+
+            // Prepare Tags (include lat/lng and hex)
             const submissionTags = [...(data.tags || [])];
+            submissionTags.push(`hex:${event_hex}`);
             if (data.location_lat && data.location_lng) {
                 submissionTags.push(`lat:${data.location_lat}`);
                 submissionTags.push(`lng:${data.location_lng}`);
@@ -131,6 +143,16 @@ export default function CreateEventPage() {
                 tierCapacities = [data.maxAttendees];
             }
 
+            if (!derivedAddress) {
+                setOpenEffectModal({
+                    open: true,
+                    title: "Account Error",
+                    message: "Unable to retrieve your account address. Please try again.",
+                    type: "error"
+                })
+                return;
+            }
+
             await createEvent({
                 account: derivedAddress,
                 title: data.title,
@@ -139,6 +161,7 @@ export default function CreateEventPage() {
                 startTime: startDateTime.getTime(),
                 endTime: endDateTime.getTime(),
                 imageUrl: image_url,
+                event_hex,
                 registrationFieldNames,
                 registrationFieldTypes,
                 organizers: data.organizer || [],
@@ -169,6 +192,50 @@ export default function CreateEventPage() {
                         </p>
                     </div>
                     <LaunchAppBtn buttonText="Connect Wallet" redirectUrl={pathname} />
+                </div>
+            </div>
+        )
+    }
+
+    if (isAccountLoading) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[80vh] gap-4">
+                <Loader2 className="w-8 h-8 animate-spin text-white" />
+                <p className="text-white/60">Verifying your account...</p>
+            </div>
+        )
+    }
+
+    if (!hasAccount) {
+        return (
+            <div className="flex flex-col items-center justify-center gap-6 fixed w-screen h-screen top-0 left-0 px-6">
+                <div className="rounded-4xl border border-white/10 bg-white/5 p-8 md:p-12 backdrop-blur-3xl text-center shadow-2xl relative overflow-hidden">
+                    <div className="absolute -top-24 -right-24 w-48 h-48 bg-white/5 rounded-full blur-3xl" />
+                    <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-white/5 rounded-full blur-3xl" />
+
+                    <div className="flex flex-col items-center gap-6 relative z-10">
+                        <div className="w-20 h-20 rounded-3xl bg-white/10 flex items-center justify-center border border-white/20 rotate-12 group-hover:rotate-0 transition-transform duration-500">
+                            <Users className="w-10 h-10 text-white" />
+                        </div>
+                        <div>
+                            <h1 className="text-3xl font-black text-white mb-3">Join Hadatha</h1>
+                            <p className="text-white/50 max-w-sm mx-auto leading-relaxed">
+                                To create and manage events, you first need to initialize your on-chain identity. This is a one-time process.
+                            </p>
+                        </div>
+                        <Button
+                            onClick={() => router.push("/profile")}
+                            className="bg-white text-black hover:bg-white/90 rounded-full px-12 py-7 h-auto text-lg font-bold shadow-xl active:scale-95 transition-all cursor-pointer"
+                        >
+                            Create Profile
+                        </Button>
+                        <button
+                            onClick={() => router.push("/events")}
+                            className="text-white/40 hover:text-white transition-colors text-sm font-medium"
+                        >
+                            Back to Events
+                        </button>
+                    </div>
                 </div>
             </div>
         )

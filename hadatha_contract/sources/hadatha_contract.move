@@ -9,7 +9,7 @@ module hadatha_contract::hadatha_contract {
     use sui::package;
     use sui::coin::{Self, Coin};
     use sui::sui::SUI;
-    use sui::type_name;
+    use std::type_name;
     use std::ascii;
 
     // ====== Error Codes ======
@@ -37,6 +37,7 @@ module hadatha_contract::hadatha_contract {
         event_id: ID,
         creator: address,
         title: vector<u8>,
+        event_hex: String,
         timestamp: u64,
     }
 
@@ -55,6 +56,7 @@ module hadatha_contract::hadatha_contract {
 
     public struct EventUpdated has copy, drop {
         event_id: ID,
+        event_hex: String,
         updated_by: address,
         timestamp: u64,
     }
@@ -154,6 +156,7 @@ module hadatha_contract::hadatha_contract {
         start_time: u64,
         end_time: u64,
         image_url: vector<u8>,
+        event_hex: String,
         organizers: vector<address>,
         attendees: Table<address, RegistrationDetails>,
         attendees_count: u64,
@@ -299,6 +302,7 @@ module hadatha_contract::hadatha_contract {
         start_time: u64,
         end_time: u64,
         image_url: vector<u8>,
+        event_hex: String,
         registration_field_names: vector<vector<u8>>,
         registration_field_types: vector<vector<u8>>,
         event_organizers: vector<address>,
@@ -361,6 +365,7 @@ module hadatha_contract::hadatha_contract {
             start_time,
             end_time,
             image_url,
+            event_hex,
             organizers,
             attendees: table::new(ctx),
             attendees_count: 0,
@@ -394,6 +399,7 @@ module hadatha_contract::hadatha_contract {
             event_id,
             creator: sender,
             title: event.title,
+            event_hex: event.event_hex,
             timestamp: current_time,
         });
 
@@ -700,6 +706,7 @@ module hadatha_contract::hadatha_contract {
         start_time: u64,
         end_time: u64,
         image_url: vector<u8>,
+        event_hex: String,
         max_attendees: u64,
         registration_field_names: vector<vector<u8>>,
         registration_field_types: vector<vector<u8>>,
@@ -752,6 +759,7 @@ module hadatha_contract::hadatha_contract {
         event.start_time = start_time;
         event.end_time = end_time;
         event.image_url = image_url;
+        event.event_hex = event_hex;
         event.max_attendees = max_attendees;
         event.tags = tags;
         event.ticket_tiers = ticket_tiers;
@@ -761,6 +769,7 @@ module hadatha_contract::hadatha_contract {
 
         event::emit(EventUpdated {
             event_id: object::id(event),
+            event_hex: event.event_hex,
             updated_by: sender,
             timestamp: current_time,
         });
@@ -867,6 +876,7 @@ module hadatha_contract::hadatha_contract {
 
         event::emit(EventUpdated {
             event_id: object::id(event),
+            event_hex: event.event_hex,
             updated_by: sender,
             timestamp: current_time,
         });
@@ -899,6 +909,7 @@ module hadatha_contract::hadatha_contract {
 
         event::emit(EventUpdated {
             event_id: object::id(event),
+            event_hex: event.event_hex,
             updated_by: sender,
             timestamp: current_time,
         });

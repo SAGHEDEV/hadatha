@@ -244,6 +244,7 @@ export const useGetAllEventDetails = (refetchInterval?: number) => {
                     end_time: timestampToDate(fields.end_time),
                     date: timestampToDate(fields.start_time),
                     imageUrl: bytesToString(fields.image_url),
+                    event_hex: fields.event_hex || (fields.tags.map((tag: number[]) => bytesToString(tag)).find((t: string) => t.startsWith('hex:'))?.replace('hex:', '') || ""),
                     organizers,
                     attendeesCount: Number(fields.attendees_count),
                     checkedInCount: Number(fields.checked_in_count),
@@ -443,6 +444,7 @@ export const useGetEventById = (eventId: string, refetchInterval?: number) => {
         end_time: timestampToDate(fields.end_time),
         date: timestampToDate(fields.start_time),
         imageUrl: bytesToString(fields.image_url),
+        event_hex: fields.event_hex || (fields.tags.map((tag: number[]) => bytesToString(tag)).find((t: string) => t.startsWith('hex:'))?.replace('hex:', '') || ""),
         organizers: (fields.organizers as string[]).map((address: string) => {
             const account = accountMap.get(address);
             return {
@@ -496,6 +498,15 @@ export const useGetEventsByStatus = (status: "ongoing" | "closed" | "hidden" | "
     const filteredEvents = events.filter(event => event.status === status);
 
     return { events: filteredEvents, isLoading, error, refetch };
+};
+
+// Get event by its readable hex ID
+export const useGetEventByHex = (hex: string, refetchInterval?: number) => {
+    const { events, isLoading, error, refetch } = useGetAllEventDetails(refetchInterval);
+
+    const event = events.find(e => e.event_hex === hex);
+
+    return { event: event || null, isLoading, error, refetch };
 };
 
 // Get events organized by a specific address

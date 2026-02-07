@@ -98,7 +98,7 @@ export function RegistrationModal({ event, isOpen, setIsOpen }: RegistrationModa
 
             await registerUser({
                 event: event.id,
-                account: derivedAddress,
+                account: derivedAddress || null,
                 registrationValues: registrationValues,
                 tierIndex: selectedTier ? event.ticket_tiers?.findIndex(t => t.name === selectedTier.name) ?? 0 : 0,
                 price: selectedTier ? Number(selectedTier.price) : 0,

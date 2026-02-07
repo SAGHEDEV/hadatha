@@ -45,17 +45,17 @@ export default function ProfilePage() {
 
     return (
         <div className="min-h-screen pb-20">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="w-full mx-auto px-4 md:px-6 lg:px-8">
                 {/* Cover & Profile Header */}
                 <div className="relative mb-8">
                     {/* Cover Background */}
-                    <div className="h-28 sm:h-38 lg:h-52 w-full bg-white/5 rounded-3xl border border-white/10 overflow-hidden relative">
+                    <div className="hidden md:block md:h-38 lg:h-52 w-full bg-white/5 rounded-3xl border border-white/10 overflow-hidden relative">
                         <div className="absolute inset-0 bg-linear-to-b from-white/5 to-transparent" />
                     </div>
 
                     {/* Profile Card - Overlapping Cover */}
-                    <div className="mx-auto px-4 sm:px-6 lg:px-8">
-                        <div className="relative -mt-20 sm:-mt-20 bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6 sm:p-8 shadow-2xl">
+                    <div className="w-full mx-auto px-0 md:px-6 lg:px-8">
+                        <div className="relative md:-mt-20 bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6 sm:p-8 shadow-2xl">
                             <div className="flex flex-col md:flex-row items-start md:items-end gap-6">
                                 {/* Profile Picture */}
                                 <div className="relative w-24 h-24 sm:w-32 sm:h-32 rounded-2xl overflow-hidden border-4 border-black/50 bg-white/10 shadow-xl shrink-0">
@@ -109,7 +109,7 @@ export default function ProfilePage() {
                 </div>
 
                 {/* Main Content Grid */}
-                <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
+                <div className=" mx-auto px-0 md:px-6 lg:px-8 mt-8">
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                         {/* Sidebar */}
                         <div className="lg:col-span-1 space-y-6">
@@ -219,7 +219,7 @@ export default function ProfilePage() {
                         {/* Main Content */}
                         <div className="lg:col-span-2">
                             <Tabs defaultValue="managed" className="w-full">
-                                <TabsList className="bg-white/5 border border-white/10 rounded-full p-1 mb-6 sm:w-auto backdrop-blur-sm h-full w-full">
+                                <TabsList className="bg-white/5 border border-white/10 rounded-full p-1 mb-6 sm:w-auto backdrop-blur-sm h-full w-full overflow-x-auto no-scroll">
                                     <TabsTrigger
                                         value="managed"
                                         className="rounded-full px-6 py-2.5! text-sm text-white font-semibold data-[state=active]:bg-white data-[state=active]:text-black transition-all cursor-pointer"
@@ -243,7 +243,7 @@ export default function ProfilePage() {
                                             <p className="text-white/50 font-medium text-sm">Loading events...</p>
                                         </div>
                                     ) : organizedEvents.length > 0 ? (
-                                        <div className="grid grid-cols-1 gap-6">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                             {organizedEvents.map(event => (
                                                 <EventCard
                                                     key={event.id}

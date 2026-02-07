@@ -5,12 +5,13 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import Logo from "./Logo"
 import { useCurrentAccount, useDisconnectWallet } from "@mysten/dapp-kit"
-import { User, LogOut, Menu, X } from "lucide-react"
+import { User, LogOut, Menu, X, Bell } from "lucide-react"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Button } from "@/components/ui/button"
 import Image from "next/image"
 import { useCheckAccountExistence } from "@/hooks/sui/useCheckAccountExistence"
 import LaunchAppBtn from "./LaunchAppBtn"
+import { useNotifications } from "@/hooks/useNotifications"
 
 const Header = () => {
     const pathname = usePathname()
@@ -19,10 +20,10 @@ const Header = () => {
     const { mutate: disconnect } = useDisconnectWallet()
     const { account } = useCheckAccountExistence()
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+    const { notifications, unreadCount, markAsRead, markAllAsRead, getNotificationIcon, getTimeAgo } = useNotifications()
 
     const navLinks = [
         { name: "Dashboard", href: "/dashboard", disabled: !currentAccount },
-        { name: "Events", href: "/events", disabled: false },
         { name: "Create Event", href: "/events/create", disabled: !currentAccount },
         // { name: "Profile", href: "/profile", disabled: !currentAccount },
     ]
@@ -48,28 +49,94 @@ const Header = () => {
         setIsMobileMenuOpen(false)
     }
 
+
+
     return (
         <>
-            <header className="fixed top-0 left-0 right-0 z-40 px-4 md:px-6 py-4">
-                <div className="max-w-7xl mx-auto rounded-full bg-white/5 backdrop-blur-xl border border-white/10 px-4 md:px-6 py-3 flex items-center justify-between shadow-[0_8px_32px_0_rgba(0,0,0,0.36)]">
+            <header className="fixed top-0 left-0 right-0 z-50 bg-black/50 backdrop-blur-xl border-b border-white/10 px-4 md:px-8 py-4">
+                <div className="max-w-[1700px] mx-auto flex items-center justify-between">
                     <Logo />
 
-                    {/* Desktop Navigation */}
-                    <nav className="hidden md:flex items-center gap-8">
-                        {navLinks.map((link) => (
+                    {/* Desktop User Menu & Notifications */}
+                    <div className="hidden md:flex items-center gap-6 ml-auto">
+                        {/* Desktop Navigation */}
+                        <nav className="flex items-center gap-6">
+                            {navLinks.map((link) => (
+                                <Link
+                                    key={link.name}
+                                    href={link.href}
+                                    className={`text-sm font-medium transition-colors hover:text-white ${pathname === link.href ? "text-white" : "text-white/60"
+                                        } ${link.disabled ? "text-white/40 cursor-not-allowed pointer-events-none" : ""}`}
+                                >
+                                    {link.name}
+                                </Link>
+                            ))}
+                            {/* Explore Button with Glassmorphism */}
                             <Link
-                                key={link.name}
-                                href={link.href}
-                                className={`text-sm font-medium transition-colors hover:text-white ${pathname === link.href ? "text-white" : "text-white/60"
-                                    } ${link.disabled ? "text-white/40 cursor-not-allowed pointer-events-none" : ""}`}
+                                href="/events"
+                                className="relative px-5 py-2 bg-white/10 backdrop-blur-md border border-white/20 rounded-full text-sm font-medium text-white hover:bg-white/20 hover:border-white/30 transition-all duration-300 cursor-pointer animate-bounce-subtle"
                             >
-                                {link.name}
+                                Explore
                             </Link>
-                        ))}
-                    </nav>
-
-                    {/* Desktop User Menu */}
-                    <div className="hidden md:flex items-center gap-4">
+                        </nav>
+                        {currentAccount && (
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <button className="relative p-2 text-white/60 hover:text-white transition-colors cursor-pointer">
+                                        <Bell className="w-5 h-5" />
+                                        {unreadCount > 0 && (
+                                            <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
+                                        )}
+                                    </button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-80 p-0 bg-black/95 backdrop-blur-2xl border border-white/10 text-white rounded-2xl mr-4 mt-4 shadow-2xl">
+                                    <div className="p-4 border-b border-white/10 flex items-center justify-between">
+                                        <h3 className="font-bold">Notifications</h3>
+                                        <span className="text-xs text-white/40">{unreadCount} unread</span>
+                                    </div>
+                                    <div className="max-h-[400px] overflow-y-auto">
+                                        {notifications.length > 0 ? (
+                                            <div className="flex flex-col">
+                                                {notifications.map((notif) => (
+                                                    <div
+                                                        key={notif.id}
+                                                        className={`p-4 hover:bg-white/5 transition-colors cursor-pointer border-b border-white/5 last:border-0 ${notif.unread ? 'bg-white/5' : ''}`}
+                                                        onClick={() => markAsRead(notif.id)}
+                                                    >
+                                                        <div className="flex gap-3">
+                                                            <div className={`mt-1 shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-white/5`}>
+                                                                {getNotificationIcon(notif)}
+                                                            </div>
+                                                            <div className="flex flex-col gap-1">
+                                                                <div className="flex items-center justify-between gap-2">
+                                                                    <span className="text-sm font-semibold">{notif.title}</span>
+                                                                    <span className="text-[10px] text-white/40 whitespace-nowrap">{getTimeAgo(notif.timestamp)}</span>
+                                                                </div>
+                                                                <p className="text-xs text-white/60 leading-relaxed line-clamp-2">
+                                                                    {notif.description}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <div className="p-8 text-center">
+                                                <p className="text-sm text-white/40">No notifications yet</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="p-3 border-t border-white/10 text-center">
+                                        <button
+                                            className="text-xs text-white/60 hover:text-white transition-colors cursor-pointer"
+                                            onClick={markAllAsRead}
+                                        >
+                                            Mark all as read
+                                        </button>
+                                    </div>
+                                </PopoverContent>
+                            </Popover>
+                        )}
                         {currentAccount ? (
                             <Popover>
                                 <PopoverTrigger asChild>
@@ -94,7 +161,7 @@ const Header = () => {
                                                 />
                                             </div>
                                             <div className="flex flex-col overflow-hidden">
-                                                <span className="font-bold text-sm truncate">{account?.name}</span>
+                                                <span className="font-bold text-sm truncate">{account?.name || "Guest User"}</span>
                                                 <span className="text-xs text-white/50 truncate">{formatAddress(currentAccount?.address as string)}</span>
                                             </div>
                                         </div>
@@ -121,7 +188,7 @@ const Header = () => {
                                 </PopoverContent>
                             </Popover>
                         ) : (
-                            <LaunchAppBtn buttonText="Connect Wallet" redirectUrl="/" />
+                            <LaunchAppBtn buttonText="Connect Wallet" redirectUrl={pathname} />
                         )}
                     </div>
 
@@ -178,7 +245,7 @@ const Header = () => {
                                 />
                             </div>
                             <div className="flex flex-col overflow-hidden flex-1">
-                                <span className="font-bold text-sm text-white truncate">{account?.name}</span>
+                                <span className="font-bold text-sm text-white truncate">{account?.name || "Guest User"}</span>
                                 <span className="text-xs text-white/50 truncate">{formatAddress(currentAccount?.address as string)}</span>
                             </div>
                         </div>
@@ -199,6 +266,13 @@ const Header = () => {
                                 {link.name}
                             </button>
                         ))}
+                        {/* Explore Button */}
+                        <button
+                            onClick={() => handleNavClick("/events", false)}
+                            className="text-left px-4 py-3 rounded-xl text-base font-medium bg-white/10 backdrop-blur-md border border-white/20 text-white hover:bg-white/20 hover:border-white/30 transition-all cursor-pointer"
+                        >
+                            Explore Events
+                        </button>
                     </nav>
 
                     {/* Divider */}
@@ -208,6 +282,29 @@ const Header = () => {
                     <div className="flex flex-col gap-3 mt-auto">
                         {currentAccount ? (
                             <>
+                                <div className="p-4 mb-2 bg-white/5 rounded-2xl border border-white/10">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <h3 className="text-white font-bold text-sm">Notifications</h3>
+                                        <span className="text-xs text-secondary">{unreadCount} New</span>
+                                    </div>
+                                    <div className="flex flex-col gap-3">
+                                        {notifications.length > 0 ? (
+                                            notifications.slice(0, 3).map((notif) => (
+                                                <div key={notif.id} className="flex gap-3 items-start" onClick={() => markAsRead(notif.id)}>
+                                                    <div className="p-2 rounded-lg bg-white/5">
+                                                        {getNotificationIcon(notif)}
+                                                    </div>
+                                                    <div className="flex flex-col gap-0.5">
+                                                        <span className="text-xs font-medium text-white">{notif.title}</span>
+                                                        <span className="text-[10px] text-white/40">{getTimeAgo(notif.timestamp)}</span>
+                                                    </div>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <p className="text-xs text-white/40 text-center py-2">No notifications</p>
+                                        )}
+                                    </div>
+                                </div>
                                 <Button
                                     variant="ghost"
                                     className="w-full justify-start gap-3 text-white/80 hover:text-white hover:bg-white/10 rounded-xl h-12 cursor-pointer"
@@ -230,7 +327,7 @@ const Header = () => {
                             </>
                         ) : (
                             <div onClick={closeMobileMenu}>
-                                <LaunchAppBtn buttonText="Connect Wallet" redirectUrl="/" />
+                                <LaunchAppBtn buttonText="Connect Wallet" redirectUrl={pathname} />
                             </div>
                         )}
                     </div>

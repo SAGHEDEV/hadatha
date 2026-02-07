@@ -9,6 +9,7 @@ export interface Event {
     start_time: string;
     end_time: string;
     imageUrl: string;
+    event_hex: string;
     organizers: {
         name: string;
         avatarUrl: string;

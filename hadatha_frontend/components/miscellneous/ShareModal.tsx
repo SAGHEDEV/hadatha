@@ -15,10 +15,10 @@ interface ShareModalProps {
 const ShareModal = ({ open, setOpen, event }: ShareModalProps) => {
     const [copied, setCopied] = useState(false)
 
-    // Generate the event URL (adjust based on your actual domain)
+    // Generate the event URL (use readable hex if available)
     const eventUrl = typeof window !== 'undefined'
-        ? `${window.location.origin}/events/${event.id}`
-        : `https://hadatha.app/events/${event.id}`
+        ? `${window.location.origin}/events/${event.event_hex || event.id}`
+        : `https://hadatha.app/events/${event.event_hex || event.id}`
 
     const shareText = `Check out ${event.title} on Hadatha!`
     const encodedUrl = encodeURIComponent(eventUrl)

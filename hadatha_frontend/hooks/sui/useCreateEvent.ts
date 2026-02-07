@@ -12,6 +12,7 @@ interface CreateEventParams {
     startTime: number;
     endTime: number;
     imageUrl: string;
+    event_hex: string;
     registrationFieldNames: string[];
     registrationFieldTypes: string[];
     organizers: string[];
@@ -48,6 +49,7 @@ export const useCreateEvent = () => {
                         tx.pure.u64(params.startTime),
                         tx.pure.u64(params.endTime),
                         tx.pure.string(params.imageUrl),
+                        tx.pure.string(params.event_hex),
                         tx.pure.vector("string", params.registrationFieldNames),
                         tx.pure.vector("string", params.registrationFieldTypes),
                         tx.pure.vector("address", params.organizers),

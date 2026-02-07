@@ -293,7 +293,6 @@ const RegistrationList = () => {
             ) : (
                 <RegistrationTable
                     data={filteredRegistrations}
-                    registrationFields={registrationFields}
                 />
             )}
         </div>

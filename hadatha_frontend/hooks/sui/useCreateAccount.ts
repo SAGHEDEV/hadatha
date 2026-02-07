@@ -6,10 +6,10 @@ import { REGISTRY_PACKAGE_ID, HADATHA_MODULE, ACCOUNT_ROOT_ID } from "@/lib/cons
 export interface CreateAccountParams {
     name: string;
     email: string;
-    bio: string;
-    twitter: string;
-    github: string;
-    website: string;
+    bio?: string;
+    twitter?: string;
+    github?: string;
+    website?: string;
     imageUrl: string;
 }
 
@@ -32,10 +32,10 @@ export const useCreateAccount = () => {
                         tx.object(ACCOUNT_ROOT_ID),
                         tx.pure.vector("u8", Array.from(new TextEncoder().encode(name))),
                         tx.pure.vector("u8", Array.from(new TextEncoder().encode(email))),
-                        tx.pure.vector("u8", Array.from(new TextEncoder().encode(bio))),
-                        tx.pure.vector("u8", Array.from(new TextEncoder().encode(twitter))),
-                        tx.pure.vector("u8", Array.from(new TextEncoder().encode(github))),
-                        tx.pure.vector("u8", Array.from(new TextEncoder().encode(website))),
+                        tx.pure.vector("u8", Array.from(new TextEncoder().encode(bio || ""))),
+                        tx.pure.vector("u8", Array.from(new TextEncoder().encode(twitter || ""))),
+                        tx.pure.vector("u8", Array.from(new TextEncoder().encode(github || ""))),
+                        tx.pure.vector("u8", Array.from(new TextEncoder().encode(website || ""))),
                         tx.pure.vector("u8", Array.from(new TextEncoder().encode(imageUrl))),
                     ],
                 });

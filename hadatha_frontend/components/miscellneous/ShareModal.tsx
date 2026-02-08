@@ -48,7 +48,7 @@ const ShareModal = ({ open, setOpen, event }: ShareModalProps) => {
 
     return (
         <ModalWrapper open={open} setOpen={setOpen}>
-            <div className="w-full max-w-[500px] text-white p-6">
+            <div className="w-full max-w-[300px] md:max-w-[500px] text-white p-3 md:p-6">
                 {/* Header */}
                 <div className="flex flex-col space-y-2 mb-6">
                     <h2 className="text-2xl font-bold">Share Event</h2>

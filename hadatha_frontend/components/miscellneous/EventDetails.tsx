@@ -123,6 +123,9 @@ const EventDetails = ({
     // Ticket Tiers
     const ticketTiers = event.ticket_tiers || []
 
+    console.log(event)
+    
+
     return (
         <div className="flex flex-col gap-8">
             {!preview && (
@@ -285,7 +288,7 @@ const EventDetails = ({
                                 <div className="flex items-center gap-2">
                                     <span className="text-white/40 text-xs font-mono">ID: {event.event_hex}</span>
                                     <Link
-                                        href={`https://suiscan.xyz/mainnet/object/${event.id}`}
+                                        href={`https://suiscan.xyz/testnet/object/${event.id}`}
                                         target="_blank"
                                         className="text-[10px] text-blue-400 hover:text-blue-300 underline"
                                     >

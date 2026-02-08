@@ -118,7 +118,6 @@ export default function CreateEventPage() {
 
             // Prepare Tags (include lat/lng and hex)
             const submissionTags = [...(data.tags || [])];
-            submissionTags.push(`hex:${event_hex}`);
             if (data.location_lat && data.location_lng) {
                 submissionTags.push(`lat:${data.location_lat}`);
                 submissionTags.push(`lng:${data.location_lng}`);

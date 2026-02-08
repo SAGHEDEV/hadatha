@@ -4,7 +4,6 @@ import { useCheckAccountExistence } from "@/hooks/sui/useCheckAccountExistence"
 import { useCurrentAccount } from "@mysten/dapp-kit"
 import { Loader2, Edit, Calendar, Award, Users, LayoutDashboard, Ticket } from "lucide-react"
 import { useState } from "react"
-import CreateProfileView from "@/components/profile/CreateProfileView"
 import EditProfileModal from "@/components/profile/EditProfileModal"
 import { Button } from "@/components/ui/button"
 import Image from "next/image"
@@ -13,6 +12,7 @@ import { useGetEventsByOrganizer } from "@/hooks/sui/useGetAllEvents"
 import StatsCard from "@/components/miscellneous/StatsCard"
 import EventCard from "@/components/miscellneous/EventCard"
 import { Twitter, Github, Globe, ExternalLink } from "lucide-react"
+import CreateAccountForm from '@/components/profile/CreateAccountForm';
 
 export default function ProfilePage() {
     const currentAccount = useCurrentAccount()
@@ -40,7 +40,9 @@ export default function ProfilePage() {
     }
 
     if (!hasAccount) {
-        return <CreateProfileView onSuccess={refetch} />
+        return <div className="flex justify-center items-center">
+            <CreateAccountForm onSuccess={refetch} />
+        </div>
     }
 
     return (
@@ -284,7 +286,7 @@ export default function ProfilePage() {
                                         </p>
                                         <Button
                                             variant="outline"
-                                            className="border-white/20 text-white hover:bg-white/5 rounded-full px-8 h-10 font-semibold cursor-pointer"
+                                            className="border-white/20 text-black hover:text-white hover:bg-white/5 hover:border-white/30 transition-all duration-300 rounded-full px-8 h-10 font-semibold cursor-pointer"
                                         >
                                             Explore Events
                                         </Button>

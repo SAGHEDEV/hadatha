@@ -5,7 +5,7 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import Logo from "./Logo"
 import { useCurrentAccount, useDisconnectWallet } from "@mysten/dapp-kit"
-import { User, LogOut, Menu, X, Bell } from "lucide-react"
+import { User, LogOut, Menu, X, Bell, UserPlus } from "lucide-react"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Button } from "@/components/ui/button"
 import Image from "next/image"
@@ -25,7 +25,6 @@ const Header = () => {
     const navLinks = [
         { name: "Dashboard", href: "/dashboard", disabled: !currentAccount },
         { name: "Create Event", href: "/events/create", disabled: !currentAccount },
-        // { name: "Profile", href: "/profile", disabled: !currentAccount },
     ]
 
     const handleDisconnect = () => {
@@ -138,55 +137,74 @@ const Header = () => {
                             </Popover>
                         )}
                         {currentAccount ? (
-                            <Popover>
-                                <PopoverTrigger asChild>
-                                    <button className="relative w-10 h-10 rounded-full overflow-hidden border border-white/20 hover:border-white/40 transition-all cursor-pointer">
-                                        <Image
-                                            src={account?.image_url ? account?.image_url : `https://ui-avatars.com/api/?name=${account?.name.slice(0, 2)}&background=random`}
-                                            alt="Profile"
-                                            fill
-                                            className="object-cover"
-                                        />
-                                    </button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-64 p-4 bg-black/90 backdrop-blur-xl border border-white/10 text-white rounded-2xl mr-6 mt-2">
-                                    <div className="flex flex-col gap-4">
-                                        <div className="flex items-center gap-3 pb-4 border-b border-white/10">
-                                            <div className="relative w-10 h-10 rounded-full overflow-hidden border border-white/20">
-                                                <Image
-                                                    src={(account?.image_url && account?.image_url !== "") ? account?.image_url : `https://ui-avatars.com/api/?name=${account?.name.slice(0, 2)}&background=random`}
-                                                    alt="Profile"
-                                                    fill
-                                                    className="object-cover"
-                                                />
+                            account ? (
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <button className="relative w-10 h-10 rounded-full overflow-hidden border border-white/20 hover:border-white/40 transition-all cursor-pointer">
+                                            <Image
+                                                src={account?.image_url ? account?.image_url : `https://ui-avatars.com/api/?name=${account?.name.slice(0, 2)}&background=random`}
+                                                alt="Profile"
+                                                fill
+                                                className="object-cover"
+                                            />
+                                        </button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-64 p-4 bg-black/90 backdrop-blur-xl border border-white/10 text-white rounded-2xl mr-6 mt-2">
+                                        <div className="flex flex-col gap-4">
+                                            <div className="flex items-center gap-3 pb-4 border-b border-white/10">
+                                                <div className="relative w-10 h-10 rounded-full overflow-hidden border border-white/20">
+                                                    <Image
+                                                        src={(account?.image_url && account?.image_url !== "") ? account?.image_url : `https://ui-avatars.com/api/?name=${account?.name.slice(0, 2)}&background=random`}
+                                                        alt="Profile"
+                                                        fill
+                                                        className="object-cover"
+                                                    />
+                                                </div>
+                                                <div className="flex flex-col overflow-hidden">
+                                                    <span className="font-bold text-sm truncate">{account?.name || "Guest User"}</span>
+                                                    <span className="text-xs text-white/50 truncate">{formatAddress(currentAccount?.address as string)}</span>
+                                                </div>
                                             </div>
-                                            <div className="flex flex-col overflow-hidden">
-                                                <span className="font-bold text-sm truncate">{account?.name || "Guest User"}</span>
-                                                <span className="text-xs text-white/50 truncate">{formatAddress(currentAccount?.address as string)}</span>
-                                            </div>
-                                        </div>
 
-                                        <div className="flex flex-col gap-2">
-                                            <Button
-                                                variant="ghost"
-                                                className="justify-start gap-2 text-white/80 hover:text-white hover:bg-white/10 rounded-xl h-10 cursor-pointer"
-                                                onClick={() => router.push("/profile")}
-                                            >
-                                                <User className="w-4 h-4" />
-                                                Profile
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                className="justify-start gap-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-xl h-10 cursor-pointer"
-                                                onClick={handleDisconnect}
-                                            >
-                                                <LogOut className="w-4 h-4" />
-                                                Disconnect
-                                            </Button>
+                                            <div className="flex flex-col gap-2">
+                                                <Button
+                                                    variant="ghost"
+                                                    className="justify-start gap-2 text-white/80 hover:text-white hover:bg-white/10 rounded-xl h-10 cursor-pointer"
+                                                    onClick={() => router.push("/my-profile")}
+                                                >
+                                                    <User className="w-4 h-4" />
+                                                    Profile
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    className="justify-start gap-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-xl h-10 cursor-pointer"
+                                                    onClick={handleDisconnect}
+                                                >
+                                                    <LogOut className="w-4 h-4" />
+                                                    Disconnect
+                                                </Button>
+                                            </div>
                                         </div>
-                                    </div>
-                                </PopoverContent>
-                            </Popover>
+                                    </PopoverContent>
+                                </Popover>
+                            ) : (
+                                <div className="flex items-center gap-4">
+                                    <Button
+                                        onClick={() => router.push('/create-account')}
+                                        className="bg-white text-black hover:bg-white/90 font-bold px-5 py-2 rounded-full text-sm"
+                                    >
+                                        Create Account
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-full"
+                                        onClick={handleDisconnect}
+                                    >
+                                        <LogOut className="w-5 h-5" />
+                                    </Button>
+                                </div>
+                            )
                         ) : (
                             <LaunchAppBtn buttonText="Connect Wallet" redirectUrl={pathname} />
                         )}
@@ -281,50 +299,73 @@ const Header = () => {
                     {/* Action Buttons */}
                     <div className="flex flex-col gap-3 mt-auto">
                         {currentAccount ? (
-                            <>
-                                <div className="p-4 mb-2 bg-white/5 rounded-2xl border border-white/10">
-                                    <div className="flex items-center justify-between mb-4">
-                                        <h3 className="text-white font-bold text-sm">Notifications</h3>
-                                        <span className="text-xs text-secondary">{unreadCount} New</span>
-                                    </div>
-                                    <div className="flex flex-col gap-3">
-                                        {notifications.length > 0 ? (
-                                            notifications.slice(0, 3).map((notif) => (
-                                                <div key={notif.id} className="flex gap-3 items-start" onClick={() => markAsRead(notif.id)}>
-                                                    <div className="p-2 rounded-lg bg-white/5">
-                                                        {getNotificationIcon(notif)}
+                            account ? (
+                                <>
+                                    <div className="p-4 mb-2 bg-white/5 rounded-2xl border border-white/10">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <h3 className="text-white font-bold text-sm">Notifications</h3>
+                                            <span className="text-xs text-secondary">{unreadCount} New</span>
+                                        </div>
+                                        <div className="flex flex-col gap-3">
+                                            {notifications.length > 0 ? (
+                                                notifications.slice(0, 3).map((notif) => (
+                                                    <div key={notif.id} className="flex gap-3 items-start" onClick={() => markAsRead(notif.id)}>
+                                                        <div className="p-2 rounded-lg bg-white/5">
+                                                            {getNotificationIcon(notif)}
+                                                        </div>
+                                                        <div className="flex flex-col gap-0.5">
+                                                            <span className="text-xs font-medium text-white">{notif.title}</span>
+                                                            <span className="text-[10px] text-white/40">{getTimeAgo(notif.timestamp)}</span>
+                                                        </div>
                                                     </div>
-                                                    <div className="flex flex-col gap-0.5">
-                                                        <span className="text-xs font-medium text-white">{notif.title}</span>
-                                                        <span className="text-[10px] text-white/40">{getTimeAgo(notif.timestamp)}</span>
-                                                    </div>
-                                                </div>
-                                            ))
-                                        ) : (
-                                            <p className="text-xs text-white/40 text-center py-2">No notifications</p>
-                                        )}
+                                                ))
+                                            ) : (
+                                                <p className="text-xs text-white/40 text-center py-2">No notifications</p>
+                                            )}
+                                        </div>
                                     </div>
-                                </div>
-                                <Button
-                                    variant="ghost"
-                                    className="w-full justify-start gap-3 text-white/80 hover:text-white hover:bg-white/10 rounded-xl h-12 cursor-pointer"
-                                    onClick={() => {
-                                        closeMobileMenu()
-                                        router.push("/profile")
-                                    }}
-                                >
-                                    <User className="w-5 h-5" />
-                                    <span>My Profile</span>
-                                </Button>
-                                <Button
-                                    variant="ghost"
-                                    className="w-full justify-start gap-3 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-xl h-12 cursor-pointer"
-                                    onClick={handleDisconnect}
-                                >
-                                    <LogOut className="w-5 h-5" />
-                                    <span>Disconnect Wallet</span>
-                                </Button>
-                            </>
+                                    <Button
+                                        variant="ghost"
+                                        className="w-full justify-start gap-3 text-white/80 hover:text-white hover:bg-white/10 rounded-xl h-12 cursor-pointer"
+                                        onClick={() => {
+                                            closeMobileMenu()
+                                            router.push("/my-profile")
+                                        }}
+                                    >
+                                        <User className="w-5 h-5" />
+                                        <span>My Profile</span>
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        className="w-full justify-start gap-3 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-xl h-12 cursor-pointer"
+                                        onClick={handleDisconnect}
+                                    >
+                                        <LogOut className="w-5 h-5" />
+                                        <span>Disconnect Wallet</span>
+                                    </Button>
+                                </>
+                            ) : (
+                                <>
+                                    <Button
+                                        className="w-full justify-center gap-3 bg-white text-black hover:bg-white/90 rounded-xl h-12 font-bold"
+                                        onClick={() => {
+                                            closeMobileMenu()
+                                            router.push("/create-account")
+                                        }}
+                                    >
+                                        <UserPlus className="w-5 h-5" />
+                                        <span>Create Account</span>
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        className="w-full justify-start gap-3 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-xl h-12 cursor-pointer"
+                                        onClick={handleDisconnect}
+                                    >
+                                        <LogOut className="w-5 h-5" />
+                                        <span>Disconnect Wallet</span>
+                                    </Button>
+                                </>
+                            )
                         ) : (
                             <div onClick={closeMobileMenu}>
                                 <LaunchAppBtn buttonText="Connect Wallet" redirectUrl={pathname} />

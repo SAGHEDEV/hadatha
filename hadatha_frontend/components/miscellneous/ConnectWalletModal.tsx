@@ -47,19 +47,15 @@ const ConnectWalletModal = ({ open, setOpen, redirectUrl }: { open: boolean, set
             // Close modal immediately
             setOpen(false);
 
-            // Small delay for UX, then redirect
             const timeoutId = setTimeout(() => {
-                const isPublicEventPage = redirectUrl?.startsWith("/events/") && !redirectUrl.startsWith("/events/create");
+                const isPublicEventPage = redirectUrl?.startsWith("/events/") || redirectUrl?.startsWith("/profile/") && !redirectUrl.startsWith("/events/create");
 
                 if (hasAccount) {
-                    // User has account - redirect to original destination or dashboard
                     const destination = redirectUrl && redirectUrl !== "/" ? redirectUrl : "/dashboard";
                     router.push(destination);
                 } else if (isPublicEventPage) {
-                    // User doesn't have an account, but it's a public event page, so let them through for guest registration
                     router.push(redirectUrl!);
                 } else {
-                    // User doesn't have an account and it's not a public event page, so send to create account
                     router.push("/create-account");
                 }
             }, 300);
@@ -73,7 +69,6 @@ const ConnectWalletModal = ({ open, setOpen, redirectUrl }: { open: boolean, set
 
     if (!open) return null;
 
-    // Show loading state when we have an account and are about to redirect
     // eslint-disable-next-line react-hooks/refs
     const showLoadingState = account?.address && (isLoading || hasHandledConnectionRef.current);
 

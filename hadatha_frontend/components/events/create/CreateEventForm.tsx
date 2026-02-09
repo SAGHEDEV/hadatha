@@ -1,7 +1,7 @@
 "use client"
 
 import { useFormContext } from "react-hook-form"
-import { CalendarIcon, Upload, Clock, Ticket, Coins } from "lucide-react"
+import { CalendarIcon, Upload, Clock } from "lucide-react"
 import { format } from "date-fns"
 
 import { cn } from "@/lib/utils"
@@ -29,6 +29,7 @@ import { TicketTierSelector } from "./TicketTierSelector"
 import { LocationPicker } from "./LocationPicker"
 import { useState, useEffect } from "react"
 import Image from "next/image"
+import { Ticket, Coins } from "lucide-react"
 
 export function CreateEventForm({ isLoading }: { isLoading: boolean }) {
     const { control, setValue, watch } = useFormContext()
@@ -54,10 +55,29 @@ export function CreateEventForm({ isLoading }: { isLoading: boolean }) {
         if (file) {
             const url = URL.createObjectURL(file)
             setImagePreview(url)
-            setValue("image", file) // In a real app, this would be the file or uploaded URL
+            setValue("image", file)
             setValue("imagePreviewUrl", url)
         }
     }
+
+    // Generate time options in 15-minute intervals
+    const generateTimeOptions = () => {
+        const options = []
+        for (let hour = 0; hour < 24; hour++) {
+            for (let minute = 0; minute < 60; minute += 15) {
+                const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`
+                const displayTime = new Date(`2000-01-01T${timeString}`).toLocaleTimeString('en-US', {
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    hour12: true
+                })
+                options.push({ value: timeString, label: displayTime })
+            }
+        }
+        return options
+    }
+
+    const timeOptions = generateTimeOptions()
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 pb-20">
@@ -83,7 +103,7 @@ export function CreateEventForm({ isLoading }: { isLoading: boolean }) {
                     ) : (
                         <div className="absolute inset-0 flex flex-col items-center justify-center text-white/60 gap-2">
                             <Upload className="w-10 h-10" />
-                            <p>Click to upload event flyer or backdrop</p>
+                            <p className="text-center px-4">Click to upload event flyer or backdrop</p>
                         </div>
                     )}
                     <Input
@@ -102,7 +122,13 @@ export function CreateEventForm({ isLoading }: { isLoading: boolean }) {
                         <FormItem>
                             <FormLabel className="text-white">Event Title</FormLabel>
                             <FormControl>
-                                <Input disabled={isLoading} placeholder="Enter event title" {...field} value={field.value ?? ''} className="bg-white/5 border-white/10 text-white placeholder:text-white/40 focus:border-white/30 h-12 text-lg" />
+                                <Input
+                                    disabled={isLoading}
+                                    placeholder="Enter event title"
+                                    {...field}
+                                    value={field.value ?? ''}
+                                    className="bg-white/5 border-white/10 text-white placeholder:text-white/40 focus:border-white/30 h-12 text-lg"
+                                />
                             </FormControl>
                             <FormMessage />
                         </FormItem>
@@ -197,13 +223,15 @@ export function CreateEventForm({ isLoading }: { isLoading: boolean }) {
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {/* Date and Time - Reorganized */}
+                    <div className="space-y-4">
+                        {/* Date on its own row */}
                         <FormField
                             control={control}
                             name="date"
                             render={({ field }) => (
                                 <FormItem className="flex flex-col">
-                                    <FormLabel className="text-white">Date</FormLabel>
+                                    <FormLabel className="text-white">Event Date</FormLabel>
                                     <Popover>
                                         <PopoverTrigger asChild>
                                             <FormControl>
@@ -212,7 +240,7 @@ export function CreateEventForm({ isLoading }: { isLoading: boolean }) {
                                                     variant={"outline"}
                                                     className={cn(
                                                         "w-full pl-3 text-left font-normal bg-white/5 border-white/10 text-white hover:bg-white/10 hover:text-white h-12",
-                                                        !field.value && "text-muted-foreground"
+                                                        !field.value && "text-white/40"
                                                     )}
                                                 >
                                                     {field.value ? (
@@ -229,11 +257,14 @@ export function CreateEventForm({ isLoading }: { isLoading: boolean }) {
                                                 mode="single"
                                                 selected={field.value}
                                                 onSelect={field.onChange}
-                                                // disabled={(date) =>
-                                                //     date < new Date()
-                                                // }
+                                                disabled={(date) => {
+                                                    // Disable dates before today (start of day)
+                                                    const today = new Date()
+                                                    today.setHours(0, 0, 0, 0)
+                                                    return date < today
+                                                }}
                                                 initialFocus
-                                                className="text-white bg-black!"
+                                                className="text-white bg-black rounded-xl"
                                             />
                                         </PopoverContent>
                                     </Popover>
@@ -242,39 +273,118 @@ export function CreateEventForm({ isLoading }: { isLoading: boolean }) {
                             )}
                         />
 
-                        <FormField
-                            control={control}
-                            name="startTime"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel className="text-white">Start Time</FormLabel>
-                                    <FormControl>
-                                        <div className="relative">
-                                            <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50" />
-                                            <Input disabled={isLoading} type="time" {...field} value={field.value ?? ''} className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-white/40 focus:border-white/30 block h-12" />
-                                        </div>
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
+                        {/* Start and End Time on same row */}
+                        <div className="grid grid-cols-2 gap-4">
+                            <FormField
+                                control={control}
+                                name="startTime"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel className="text-white">Start Time</FormLabel>
+                                        <Popover>
+                                            <PopoverTrigger asChild>
+                                                <FormControl>
+                                                    <Button
+                                                        disabled={isLoading}
+                                                        variant={"outline"}
+                                                        className={cn(
+                                                            "w-full pl-3 text-left font-normal bg-white/5 border-white/10 text-white hover:bg-white/10 hover:text-white h-12",
+                                                            !field.value && "text-white/40"
+                                                        )}
+                                                    >
+                                                        <Clock className="mr-2 h-4 w-4 opacity-50" />
+                                                        {field.value ? (
+                                                            new Date(`2000-01-01T${field.value}`).toLocaleTimeString('en-US', {
+                                                                hour: 'numeric',
+                                                                minute: '2-digit',
+                                                                hour12: true
+                                                            })
+                                                        ) : (
+                                                            <span>Select time</span>
+                                                        )}
+                                                    </Button>
+                                                </FormControl>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-64 p-0 bg-black border-white/10" align="start">
+                                                <div className="max-h-64 overflow-y-auto p-2">
+                                                    {timeOptions.map((option) => (
+                                                        <button
+                                                            key={option.value}
+                                                            type="button"
+                                                            onClick={() => field.onChange(option.value)}
+                                                            className={cn(
+                                                                "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors",
+                                                                field.value === option.value
+                                                                    ? "bg-white text-black font-medium"
+                                                                    : "text-white hover:bg-white/10"
+                                                            )}
+                                                        >
+                                                            {option.label}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </PopoverContent>
+                                        </Popover>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
 
-                        <FormField
-                            control={control}
-                            name="endTime"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel className="text-white">End Time</FormLabel>
-                                    <FormControl>
-                                        <div className="relative">
-                                            <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50" />
-                                            <Input disabled={isLoading} type="time" {...field} value={field.value ?? ''} className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-white/40 focus:border-white/30 block h-12" />
-                                        </div>
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
+                            <FormField
+                                control={control}
+                                name="endTime"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel className="text-white">End Time</FormLabel>
+                                        <Popover>
+                                            <PopoverTrigger asChild>
+                                                <FormControl>
+                                                    <Button
+                                                        disabled={isLoading}
+                                                        variant={"outline"}
+                                                        className={cn(
+                                                            "w-full pl-3 text-left font-normal bg-white/5 border-white/10 text-white hover:bg-white/10 hover:text-white h-12",
+                                                            !field.value && "text-white/40"
+                                                        )}
+                                                    >
+                                                        <Clock className="mr-2 h-4 w-4 opacity-50" />
+                                                        {field.value ? (
+                                                            new Date(`2000-01-01T${field.value}`).toLocaleTimeString('en-US', {
+                                                                hour: 'numeric',
+                                                                minute: '2-digit',
+                                                                hour12: true
+                                                            })
+                                                        ) : (
+                                                            <span>Select time</span>
+                                                        )}
+                                                    </Button>
+                                                </FormControl>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-64 p-0 bg-black border-white/10" align="start">
+                                                <div className="max-h-64 overflow-y-auto p-2">
+                                                    {timeOptions.map((option) => (
+                                                        <button
+                                                            key={option.value}
+                                                            type="button"
+                                                            onClick={() => field.onChange(option.value)}
+                                                            className={cn(
+                                                                "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors",
+                                                                field.value === option.value
+                                                                    ? "bg-white text-black font-medium"
+                                                                    : "text-white hover:bg-white/10"
+                                                            )}
+                                                        >
+                                                            {option.label}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </PopoverContent>
+                                        </Popover>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        </div>
                     </div>
                 </div>
 
@@ -378,6 +488,9 @@ export function CreateEventForm({ isLoading }: { isLoading: boolean }) {
                                         className="bg-white/5 border-white/10 text-white placeholder:text-white/40 focus:border-white/30 h-12"
                                     />
                                 </FormControl>
+                                {watch("ticketType") === "paid" && (
+                                    <p className="text-xs text-white/40 mt-1">Automatically calculated from ticket tiers</p>
+                                )}
                                 <FormMessage />
                             </FormItem>
                         )}

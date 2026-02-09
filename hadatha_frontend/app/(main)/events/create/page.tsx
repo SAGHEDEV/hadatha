@@ -176,7 +176,7 @@ export default function CreateEventPage() {
             methods.reset();
         } catch (error) {
             console.error("Failed to create event:", error);
-            setOpenEffectModal({ open: true, title: "Failed to create event", message: "Failed to create event. See console for details.", type: "error" })
+            setOpenEffectModal({ open: true, title: "Failed to create event", message: "Failed to create event. Please try again.", type: "error" })
         }
     }
 

@@ -75,7 +75,7 @@ const CreateAccountPageContent = () => {
 
             <StatusModal isOpen={openEffectModal.open}
                 onClose={() => setOpenEffectModal({ open: false, status: "success", message: "", description: "" })}
-                type={openEffectModal.status} title={openEffectModal.message} description={openEffectModal.description} actionLabel="Close"
+                type={openEffectModal.status} title={openEffectModal.message} description={openEffectModal.description} actionLabel="Proceed to Dashboard"
                 onAction={() => { setOpenEffectModal({ open: false, status: "success", message: "", description: "" }); router.push(redirectUrl ? "/dashboard?redirect=" + redirectUrl : "/dashboard") }} />
         </div>
     )

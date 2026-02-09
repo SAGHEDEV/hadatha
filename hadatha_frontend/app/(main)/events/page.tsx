@@ -15,7 +15,6 @@ const EventsPage = () => {
     const locations = ["All", "Online", "In-Person", "Nearest to me"]
 
     const { events, isLoading, error } = useGetAllEventDetails(1000)
-    console.log(events.length)
 
     // Filter events based on status and visibility
     const filteredEvents = useMemo(() => {
@@ -36,7 +35,7 @@ const EventsPage = () => {
         })
     }, [events, eventStatus])
 
-    console.log("Filtered events:", filteredEvents)
+    // console.log("Filtered events:", filteredEvents)
 
     if (isLoading) {
         return (

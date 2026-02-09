@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button"
 import { Event } from "@/types"
-import { Edit, Image as ImageIcon, QrCode } from "lucide-react"
+import { Edit, Image as ImageIcon, QrCode, Power } from "lucide-react"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { useToggleAllowCheckin } from "@/hooks/sui/useCheckin"
@@ -33,124 +33,220 @@ export const OverviewTab = ({ event, hasEventEnded }: OverviewTabProps) => {
 
     return (
         <div className="flex flex-col gap-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {/* Event Actions */}
-                <div className="flex flex-col gap-6 p-6 rounded-3xl bg-white/5 border border-white/10">
-                    <h3 className="text-xl font-bold text-white pb-4 border-b border-white/20">Quick Actions</h3>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Left Column - Quick Actions */}
+                <div className="flex flex-col gap-4">
+                    <h3 className="text-xl font-bold text-white mb-2">Quick Actions</h3>
 
-                    <div className="grid grid-cols-1 gap-3">
-                        <div className="flex flex-col gap-2">
-                            <p className="text-sm text-white/60">Manage your event</p>
+                    {/* Edit Event Card */}
+                    <div className="group bg-linear-to-br from-white/5 to-white/2 border border-white/10 rounded-2xl p-6 hover:border-blue-400/30 transition-all duration-300">
+                        <div className="flex items-start gap-4">
+                            <div className="p-3 bg-blue-500/10 rounded-xl border border-blue-500/20 group-hover:bg-blue-500/20 transition-colors">
+                                <Edit className="w-5 h-5 text-blue-400" />
+                            </div>
+                            <div className="flex-1">
+                                <h4 className="text-lg font-semibold text-white mb-1">Edit Event Details</h4>
+                                <p className="text-sm text-white/60 mb-4 leading-relaxed">
+                                    Update your event information, description, location, date and other details
+                                </p>
+                                <Button
+                                    className="bg-blue-500/10 text-blue-400 border border-blue-500/20 hover:bg-blue-500/20 hover:border-blue-400/40 rounded-xl px-4 h-9 text-sm font-medium transition-all"
+                                    disabled={hasEventEnded}
+                                    onClick={() => router.push(`/events/${event.id}/edit`)}
+                                >
+                                    {hasEventEnded ? "Event Ended" : "Edit Event"}
+                                </Button>
+                            </div>
                         </div>
-                        <Button
-                            className="w-full rounded-xl py-6 text-base font-medium bg-white/10 text-white border border-white/10 hover:bg-white/20 hover:border-white/30 transition-all cursor-pointer justify-start px-4"
-                            disabled={hasEventEnded}
-                            onClick={() => router.push(`/events/${event.id}/edit`)}
-                        >
-                            <Edit className="w-4 h-4 mr-3 text-blue-400" />
-                            Edit Event Details
-                        </Button>
+                    </div>
 
-                        {event.nft_config?.enabled ? (
-                            <Button
-                                className="w-full rounded-xl py-6 text-base font-medium bg-white/10 text-white border border-white/10 hover:bg-white/20 hover:border-white/30 transition-all cursor-pointer justify-start px-4"
-                                onClick={() => setIsCreateNFTModalOpen({ open: true, section: "edit" })}
-                            >
-                                <ImageIcon className="w-4 h-4 mr-3 text-purple-400" />
-                                Update Attendance NFT
-                            </Button>
-                        ) : (
-                            <Button
-                                className="w-full rounded-xl py-6 text-base font-medium bg-white/10 text-white border border-white/10 hover:bg-white/20 hover:border-white/30 transition-all cursor-pointer justify-start px-4"
-                                onClick={() => setIsCreateNFTModalOpen({ open: true, section: "create" })}
-                            >
-                                <ImageIcon className="w-4 h-4 mr-3 text-purple-400" />
-                                Setup Attendance NFT
-                            </Button>
-                        )}
+                    {/* Attendance NFT Card */}
+                    <div className="group bg-linear-to-br from-white/5 to-white/2 border border-white/10 rounded-2xl p-6 hover:border-purple-400/30 transition-all duration-300">
+                        <div className="flex items-start gap-4">
+                            <div className="p-3 bg-purple-500/10 rounded-xl border border-purple-500/20 group-hover:bg-purple-500/20 transition-colors">
+                                <ImageIcon className="w-5 h-5 text-purple-400" />
+                            </div>
+                            <div className="flex-1">
+                                {event.nft_config?.enabled ? (
+                                    <>
+                                        <h4 className="text-lg font-semibold text-white mb-1">Update Attendance NFT</h4>
+                                        <p className="text-sm text-white/60 mb-4 leading-relaxed">
+                                            Modify the NFT design, name, or description that attendees will receive
+                                        </p>
+                                        <Button
+                                            className="bg-purple-500/10 text-purple-400 border border-purple-500/20 hover:bg-purple-500/20 hover:border-purple-400/40 rounded-xl px-4 h-9 text-sm font-medium transition-all"
+                                            onClick={() => setIsCreateNFTModalOpen({ open: true, section: "edit" })}
+                                        >
+                                            Update NFT
+                                        </Button>
+                                    </>
+                                ) : (
+                                    <>
+                                        <h4 className="text-lg font-semibold text-white mb-1">Setup Attendance NFT</h4>
+                                        <p className="text-sm text-white/60 mb-4 leading-relaxed">
+                                            Create a commemorative NFT that attendees will receive after checking in
+                                        </p>
+                                        <Button
+                                            className="bg-purple-500/10 text-purple-400 border border-purple-500/20 hover:bg-purple-500/20 hover:border-purple-400/40 rounded-xl px-4 h-9 text-sm font-medium transition-all"
+                                            onClick={() => setIsCreateNFTModalOpen({ open: true, section: "create" })}
+                                        >
+                                            Create NFT
+                                        </Button>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    </div>
 
-                        <Button
-                            className="w-full rounded-xl py-6 text-base font-medium bg-white/10 text-white border border-white/10 hover:bg-white/20 hover:border-white/30 transition-all cursor-pointer justify-start px-4"
-                            onClick={() => setIsGeneratedQrModalOpen(true)}
-                        >
-                            <QrCode className="w-4 h-4 mr-3 text-yellow-400" />
-                            Check-in QR Code
-                        </Button>
+                    {/* QR Code Card */}
+                    <div className="group bg-linear-to-br from-white/5 to-white/2 border border-white/10 rounded-2xl p-6 hover:border-yellow-400/30 transition-all duration-300">
+                        <div className="flex items-start gap-4">
+                            <div className="p-3 bg-yellow-500/10 rounded-xl border border-yellow-500/20 group-hover:bg-yellow-500/20 transition-colors">
+                                <QrCode className="w-5 h-5 text-yellow-400" />
+                            </div>
+                            <div className="flex-1">
+                                <h4 className="text-lg font-semibold text-white mb-1">Check-in QR Code</h4>
+                                <p className="text-sm text-white/60 mb-4 leading-relaxed">
+                                    Generate and display QR code for attendees to scan and check into the event
+                                </p>
+                                <Button
+                                    className="bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 hover:bg-yellow-500/20 hover:border-yellow-400/40 rounded-xl px-4 h-9 text-sm font-medium transition-all"
+                                    onClick={() => setIsGeneratedQrModalOpen(true)}
+                                >
+                                    Generate QR
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
 
-
-                        <div className="pt-4 border-t border-white/10">
-                            <p className="text-sm text-white/60 mb-3">Check-in Status</p>
-                            <Button
-                                className={`w-full py-6 text-base font-medium text-center rounded-full ${event.allowCheckin
-                                    ? "bg-red-600 text-white hover:bg-red-400"
-                                    : "bg-green-600 text-white hover:bg-green-400"
-                                    } transition-all cursor-pointer justify-center px-4 ${isToggling ? "opacity-50 cursor-not-allowed" : ""
-                                    }`}
-                                onClick={async () => {
-                                    try {
-                                        await toggleAllowCheckin(event.id);
-                                        setActionEffect({
-                                            open: true,
-                                            title: event.allowCheckin
-                                                ? "Check-in Disabled"
-                                                : "Check-in Enabled",
-                                            description: event.allowCheckin
-                                                ? "Attendees can no longer check in"
-                                                : "Attendees can now check in to the event",
-                                            type: "success",
-                                        });
-                                    } catch (error) {
-                                        console.log(error);
-                                        setActionEffect({
-                                            open: true,
-                                            title: "An error occurred",
-                                            description: "Failed to toggle check-in settings",
-                                            type: "error",
-                                        });
+                    {/* Check-in Toggle Card */}
+                    <div className={`group bg-linear-to-br from-white/5 to-white/2 border rounded-2xl p-6 transition-all duration-300 ${event.allowCheckin
+                            ? "border-green-500/30 hover:border-green-400/40"
+                            : "border-white/10 hover:border-red-400/30"
+                        }`}>
+                        <div className="flex items-start gap-4">
+                            <div className={`p-3 rounded-xl border transition-colors ${event.allowCheckin
+                                    ? "bg-green-500/10 border-green-500/20 group-hover:bg-green-500/20"
+                                    : "bg-white/5 border-white/10 group-hover:bg-red-500/10"
+                                }`}>
+                                <Power className={`w-5 h-5 ${event.allowCheckin ? "text-green-400" : "text-white/40"}`} />
+                            </div>
+                            <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-1">
+                                    <h4 className="text-lg font-semibold text-white">Check-in Control</h4>
+                                    <span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${event.allowCheckin
+                                            ? "bg-green-500/20 text-green-400 border border-green-500/30"
+                                            : "bg-white/5 text-white/40 border border-white/10"
+                                        }`}>
+                                        {event.allowCheckin ? "Active" : "Inactive"}
+                                    </span>
+                                </div>
+                                <p className="text-sm text-white/60 mb-4 leading-relaxed">
+                                    {event.allowCheckin
+                                        ? "Check-in is currently enabled. Attendees can scan QR and receive NFTs"
+                                        : "Enable check-in to allow attendees to scan QR codes and mark attendance"
                                     }
-                                }}
-                                disabled={isToggling || hasEventEnded}
-                            >
-                                {isToggling
-                                    ? "Updating..."
-                                    : event.allowCheckin
-                                        ? "Disable Check-in"
-                                        : "Enable Check-in"}
-                            </Button>
+                                </p>
+                                <Button
+                                    className={`rounded-xl px-4 h-9 text-sm font-medium transition-all ${event.allowCheckin
+                                            ? "bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 hover:border-red-400/40"
+                                            : "bg-green-500/10 text-green-400 border border-green-500/20 hover:bg-green-500/20 hover:border-green-400/40"
+                                        } ${isToggling || hasEventEnded ? "opacity-50 cursor-not-allowed" : ""}`}
+                                    onClick={async () => {
+                                        try {
+                                            await toggleAllowCheckin(event.id);
+                                            setActionEffect({
+                                                open: true,
+                                                title: event.allowCheckin
+                                                    ? "Check-in Disabled"
+                                                    : "Check-in Enabled",
+                                                description: event.allowCheckin
+                                                    ? "Attendees can no longer check in"
+                                                    : "Attendees can now check in to the event",
+                                                type: "success",
+                                            });
+                                        } catch (error) {
+                                            console.log(error);
+                                            setActionEffect({
+                                                open: true,
+                                                title: "An error occurred",
+                                                description: "Failed to toggle check-in settings",
+                                                type: "error",
+                                            });
+                                        }
+                                    }}
+                                    disabled={isToggling || hasEventEnded}
+                                >
+                                    {isToggling
+                                        ? "Updating..."
+                                        : event.allowCheckin
+                                            ? "Disable Check-in"
+                                            : "Enable Check-in"}
+                                </Button>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                {/* Hosts & Organizers */}
-                <div className="flex flex-col gap-6 p-6 rounded-3xl bg-white/5 border border-white/10 h-fit">
-                    <h3 className="text-xl font-bold text-white pb-4 border-b border-white/20">Hosts & Co-Organizers</h3>
+                {/* Right Column - Hosts & Organizers */}
+                <div className="flex flex-col gap-4">
+                    <h3 className="text-xl font-bold text-white mb-2">Hosts & Co-Organizers</h3>
 
-                    <div className="flex flex-col gap-4">
-                        {event.organizers && event.organizers.length > 0 ? (
-                            event.organizers.map((organizer, index) => (
-                                <div key={index} className="flex items-center gap-4 bg-white/5 p-3 rounded-xl border border-white/5">
-                                    <div className="relative w-10 h-10 rounded-full overflow-hidden bg-black border border-white/20">
-                                        <Image
-                                            src={organizer.avatarUrl}
-                                            alt={organizer.name}
-                                            fill
-                                            className="object-cover"
-                                        />
+                    <div className="bg-linear-to-br from-white/5 to-white/2 border border-white/10 rounded-2xl p-6">
+                        <div className="flex flex-col gap-4">
+                            {event.organizers && event.organizers.length > 0 ? (
+                                event.organizers.map((organizer, index) => (
+                                    <div
+                                        key={index}
+                                        className="flex items-center gap-4 bg-white/5 hover:bg-white/10 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-all group"
+                                    >
+                                        <div className="relative w-12 h-12 rounded-full overflow-hidden bg-linear-to-br from-white/10 to-white/5 border-2 border-white/20 shrink-0">
+                                            <Image
+                                                src={organizer.avatarUrl}
+                                                alt={organizer.name}
+                                                fill
+                                                className="object-cover"
+                                            />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <span className="text-white font-semibold truncate">{organizer.name}</span>
+                                                {index === 0 && (
+                                                    <span className="px-2 py-0.5 text-xs bg-purple-500/20 text-purple-300 rounded-full border border-purple-500/30 font-semibold whitespace-nowrap">
+                                                        Creator
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <span className="text-white/40 text-xs font-mono truncate block">
+                                                {organizer.address.slice(0, 6)}...{organizer.address.slice(-4)}
+                                            </span>
+                                        </div>
                                     </div>
-                                    <div className="flex flex-col">
-                                        <span className="text-white font-medium">{organizer.name}</span>
-                                        <span className="text-white/40 text-xs truncate max-w-[200px]">{organizer.address}</span>
+                                ))
+                            ) : (
+                                <div className="flex flex-col items-center justify-center py-12 text-center">
+                                    <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center mb-4">
+                                        <Edit className="w-8 h-8 text-white/20" />
                                     </div>
-                                    {index === 0 && (
-                                        <span className="ml-auto text-xs bg-purple-500/20 text-purple-300 px-2 py-1 rounded-full border border-purple-500/30">
-                                            Creator
-                                        </span>
-                                    )}
+                                    <p className="text-white/40 text-sm">No organizers listed</p>
                                 </div>
-                            ))
-                        ) : (
-                            <span className="text-white/40 italic">No organizers listed</span>
-                        )}
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Optional: Event Stats Card */}
+                    <div className="bg-linear-to-br from-white/5 to-white/2 border border-white/10 rounded-2xl p-6">
+                        <h4 className="text-sm font-bold text-white/50 uppercase tracking-wider mb-4">Event Stats</h4>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="bg-white/5 rounded-xl p-4 border border-white/5">
+                                <p className="text-2xl font-bold text-white mb-1">{event.attendeesCount || 0}</p>
+                                <p className="text-xs text-white/50">Registered</p>
+                            </div>
+                            <div className="bg-white/5 rounded-xl p-4 border border-white/5">
+                                <p className="text-2xl font-bold text-white mb-1">{event.checkedInCount || 0}</p>
+                                <p className="text-xs text-white/50">Checked In</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -161,7 +257,6 @@ export const OverviewTab = ({ event, hasEventEnded }: OverviewTabProps) => {
                 eventId={event.id}
                 onSuccess={() => {
                     setIsCreateNFTModalOpen({ open: false, section: "create" });
-                    // Optionally refresh event data here - parent will likely handle this via SWR revalidation
                 }}
                 isOpen={isCreateNFTModalOpen.open}
                 setOpen={(val) => setIsCreateNFTModalOpen({ open: val, section: "create" })}

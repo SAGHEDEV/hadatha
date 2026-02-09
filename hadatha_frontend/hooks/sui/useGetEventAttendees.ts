@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useSuiClientQuery } from "@mysten/dapp-kit";
-import { REGISTRY_PACKAGE_ID, HADATHA_MODULE, ACCOUNT_ROOT_ID } from "@/lib/constant";
+import { ACCOUNT_ROOT_ID } from "@/lib/constant";
 import { deriveObjectID } from '@mysten/sui/utils';
 import { bcs } from "@mysten/sui/bcs";
 

@@ -56,8 +56,6 @@ export function RegistrationModal({ event, isOpen, setIsOpen, onRegisterSuccess 
         (normalizeStructTag(getFullCurrencyType(selectedTier.currency || "SUI")) === normalizeStructTag(SUI_TYPE) && balances.sui < BigInt(selectedTier.price))
     );
 
-    console.log(formattedBalances)
-
     // Dynamically generate schema based on event.registration_fields
     const generateSchema = () => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -105,9 +103,9 @@ export function RegistrationModal({ event, isOpen, setIsOpen, onRegisterSuccess 
                 return value.toString(); // Convert to string
             }) || [];
 
-            console.log('Submitting registration with values:', registrationValues);
-            console.log('Event ID:', event.id);
-            console.log('Account ID:', derivedAddress);
+            // console.log('Submitting registration with values:', registrationValues);
+            // console.log('Event ID:', event.id);
+            // console.log('Account ID:', derivedAddress);
 
             await registerUser({
                 event: event.id,

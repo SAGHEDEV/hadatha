@@ -73,13 +73,13 @@ export default function EditEventPage() {
         return Array.isArray(event?.organizers) ? event?.organizers.map(org => (org.address)) : []
     }, [event?.organizers])
     const derivedAddreess = useGetDerivedAddresses(organizerAddresses)
-    console.log(derivedAddreess)
+    // console.log(derivedAddreess)
 
     // Populate form when event data is loaded - FIX: Remove methods from dependencies
     useEffect(() => {
         // Only initialize form once when event loads
         if (event && !isLoadingEvent && !isFormInitialized.current) {
-            console.log("Initializing form with event data:", event)
+            // console.log("Initializing form with event data:", event)
 
             // Convert timestamps to Date and time strings
             const eventDate = new Date(event.date)
@@ -116,7 +116,7 @@ export default function EditEventPage() {
             // Mark form as initialized
             isFormInitialized.current = true
         }
-    }, [event?.id, isLoadingEvent, derivedAddreess.isLoading]) // Removed 'methods' from dependencies
+    }, [event?.id, isLoadingEvent, derivedAddreess.isLoading, event, methods, derivedAddreess.derivedAddresses]) // Removed 'methods' from dependencies
 
     // Check if current user is an organizer
     const isOrganizer = useMemo(() => {
@@ -126,7 +126,7 @@ export default function EditEventPage() {
     }, [currentAccount, event?.organizers])
 
     const onSubmit = async (data: z.infer<typeof eventSchema>) => {
-        console.log("Form Data:", data)
+        // console.log("Form Data:", data)
 
         if (!derivedAddress) {
             setOpenEffectModal({
@@ -154,7 +154,7 @@ export default function EditEventPage() {
         if (data.image instanceof File) {
             try {
                 const blobUrl = await uploadToWalrus(data.image)
-                console.log("New image uploaded:", blobUrl)
+                // console.log("New image uploaded:", blobUrl)
                 image_url = blobUrl
             } catch (err) {
                 console.error("Failed to upload image:", err)

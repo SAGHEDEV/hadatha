@@ -3,7 +3,6 @@
 import EventDetails from "@/components/miscellneous/EventDetails";
 import {
     useGetEventByIdWithAttendees,
-    useGetEventByHex,
     useGetEventByHexWithAttendees,
 } from "@/hooks/sui/useGetAllEvents";
 import { useParams } from "next/navigation";

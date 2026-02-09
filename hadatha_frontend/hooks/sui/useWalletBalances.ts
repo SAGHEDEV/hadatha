@@ -1,4 +1,5 @@
 import { useCurrentAccount, useSuiClientQuery } from "@mysten/dapp-kit";
+import { normalizeStructTag } from "@mysten/sui/utils";
 import { SUI_TYPE, USDC_TYPE } from "@/lib/constant";
 import { CoinBalance } from "@mysten/sui/client";
 
@@ -13,7 +14,8 @@ export const useWalletBalances = () => {
     });
 
     const getBalance = (type: string) => {
-        const b = (balances as CoinBalance[] | undefined)?.find((b) => b.coinType === type);
+        const normalizedType = normalizeStructTag(type);
+        const b = (balances as CoinBalance[] | undefined)?.find((b) => normalizeStructTag(b.coinType) === normalizedType);
         return b ? BigInt(b.totalBalance) : BigInt(0);
     };
 

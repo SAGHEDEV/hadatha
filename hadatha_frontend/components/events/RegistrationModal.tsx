@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Event, TicketTier } from "@/types"
 import ModalWrapper from "@/components/miscellneous/ModalWrapper"
 import { useRegisterUser } from "@/hooks/sui/useRegisterUser"
-import { useGetDerivedAddress } from "@/hooks/sui/useCheckAccountExistence"
+import { useGetDerivedAddress, useCheckAccountExistence } from "@/hooks/sui/useCheckAccountExistence"
 import { useCurrentAccount } from "@mysten/dapp-kit"
 import { Loader2 } from "lucide-react"
 import { useState } from "react"
@@ -19,16 +19,28 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { useWalletBalances } from "@/hooks/sui/useWalletBalances"
 import { SUI_TYPE, USDC_TYPE } from "@/lib/constant"
 import { getCurrencyLabel, getFullCurrencyType, formatAmount } from "@/lib/coin"
+import { normalizeStructTag } from "@mysten/sui/utils"
 
 interface RegistrationModalProps {
     event: Event
     isOpen: boolean
     setIsOpen: (open: boolean) => void
+    onRegisterSuccess?: () => void
 }
 
-export function RegistrationModal({ event, isOpen, setIsOpen }: RegistrationModalProps) {
+// Helper to extract meaningful error from MoveAbort
+const formatMoveError = (errorMsg: string): string => {
+    if (errorMsg.includes("function: 14")) return "You are already registered for this event.";
+    if (errorMsg.includes("function: 15")) return "This event is full.";
+    if (errorMsg.includes("function: 16")) return "Registration is closed.";
+    // Add more mappings as discovered
+    return "An error occurred during transaction execution.";
+};
+
+export function RegistrationModal({ event, isOpen, setIsOpen, onRegisterSuccess }: RegistrationModalProps) {
     const { registerUser, isRegistering } = useRegisterUser();
     const currentAccount = useCurrentAccount();
+    const { hasAccount } = useCheckAccountExistence();
     const derivedAddress = useGetDerivedAddress(currentAccount?.address);
     const [openEffectModal, setOpenEffectModal] = useState({ open: false, title: "", message: "", type: "success" as "success" | "error" })
     const [selectedTier, setSelectedTier] = useState<TicketTier | null>(() => {
@@ -39,11 +51,12 @@ export function RegistrationModal({ event, isOpen, setIsOpen }: RegistrationModa
     })
 
     const { balances, formattedBalances } = useWalletBalances();
-
     const isInsufficientBalance = selectedTier && Number(selectedTier.price) > 0 && (
-        (getFullCurrencyType(selectedTier.currency || "SUI") === USDC_TYPE && balances.usdc < BigInt(selectedTier.price)) ||
-        (getFullCurrencyType(selectedTier.currency || "SUI") === SUI_TYPE && balances.sui < BigInt(selectedTier.price))
+        (normalizeStructTag(getFullCurrencyType(selectedTier.currency || "SUI")) === normalizeStructTag(USDC_TYPE) && balances.usdc < BigInt(selectedTier.price)) ||
+        (normalizeStructTag(getFullCurrencyType(selectedTier.currency || "SUI")) === normalizeStructTag(SUI_TYPE) && balances.sui < BigInt(selectedTier.price))
     );
+
+    console.log(formattedBalances)
 
     // Dynamically generate schema based on event.registration_fields
     const generateSchema = () => {
@@ -98,7 +111,7 @@ export function RegistrationModal({ event, isOpen, setIsOpen }: RegistrationModa
 
             await registerUser({
                 event: event.id,
-                account: derivedAddress || null,
+                account: hasAccount ? derivedAddress : null,
                 registrationValues: registrationValues,
                 tierIndex: selectedTier ? event.ticket_tiers?.findIndex(t => t.name === selectedTier.name) ?? 0 : 0,
                 price: selectedTier ? Number(selectedTier.price) : 0,
@@ -107,6 +120,12 @@ export function RegistrationModal({ event, isOpen, setIsOpen }: RegistrationModa
 
             setOpenEffectModal({ open: true, title: "Successfully registered for the event!", message: "", type: "success" })
             reset(); // Reset form after successful registration
+
+            // Call the success callback if provided
+            if (onRegisterSuccess) {
+                onRegisterSuccess();
+            }
+
             setIsOpen(false);
         } catch (error) {
             console.error("Registration failed:", error);
@@ -115,12 +134,18 @@ export function RegistrationModal({ event, isOpen, setIsOpen }: RegistrationModa
             let errorMessage = "Failed to register. Please try again.";
 
             if (error instanceof Error) {
-                if (error.message.includes('EAlreadyRegistered')) {
+                const errorMessageStr = error.message;
+
+                if (errorMessageStr.includes('EAlreadyRegistered') || errorMessageStr.includes('MoveAbort') && errorMessageStr.includes('function: 14')) {
+                    // Function 14 corresponds to EAlreadyRegistered based on user report
                     errorMessage = "You are already registered for this event.";
-                } else if (error.message.includes('EEventFull')) {
+                } else if (errorMessageStr.includes('EEventFull') || errorMessageStr.includes('MoveAbort') && errorMessageStr.includes('function: 15')) { // Guessing 15 for EventFull, adjust based on Move codes
                     errorMessage = "This event is full. No more spots available.";
-                } else if (error.message.includes('EEventClosed')) {
+                } else if (errorMessageStr.includes('EEventClosed')) {
                     errorMessage = "Registration for this event is closed.";
+                } else if (errorMessageStr.includes('MoveAbort')) {
+                    // For generic MoveAbort, try to give a bit more context if possible, or stick to generic
+                    errorMessage = `Transaction failed: ${formatMoveError(errorMessageStr)}`;
                 }
             }
 

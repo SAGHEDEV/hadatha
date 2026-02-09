@@ -68,10 +68,16 @@ export const useGetEventAttendeesFromTable = (eventId: string, refetchInterval?:
 
     const tableId = eventFields?.attendees?.fields?.id?.id;
 
-    const registrationFields = eventFields?.registration_fields?.map((field: any) => ({
-        name: bytesToString(field.name),
-        type: bytesToString(field.field_type || field.type),
-    })) || [];
+    const registrationFields = eventFields?.registration_fields?.map((field: any) => {
+        const nameData = field.fields?.name || field.name;
+        // field_type might be under fields.field_type or just fields.type or direct
+        const typeData = field.fields?.field_type || field.fields?.type || field.field_type || field.type;
+
+        return {
+            name: bytesToString(nameData),
+            type: bytesToString(typeData),
+        };
+    }) || [];
 
     // Get all dynamic fields (attendees) from the table
     const { data: dynamicFields, isLoading: fieldsLoading, error: fieldsError, refetch: refetchFields } = useSuiClientQuery(
@@ -85,8 +91,11 @@ export const useGetEventAttendeesFromTable = (eventId: string, refetchInterval?:
         }
     );
 
+    console.log('Attendees Dynamic Fields:', dynamicFields);
+
     // Get the object IDs of all attendee entries
     const attendeeObjectIds = dynamicFields?.data?.map(field => field.objectId) || [];
+    console.log('Attendee Object IDs:', attendeeObjectIds);
 
     // Fetch all attendee objects
     const { data: attendeeObjects, isLoading: objectsLoading, error: objectsError, refetch: refetchObjects } = useSuiClientQuery(
@@ -108,6 +117,7 @@ export const useGetEventAttendeesFromTable = (eventId: string, refetchInterval?:
 
     // Refetch function that triggers all queries
     const refetch = async () => {
+        console.log('Refetching attendees...');
         await Promise.all([refetchEvent(), refetchFields(), refetchObjects()]);
     };
 
@@ -135,6 +145,7 @@ export const useGetEventAttendeesFromTable = (eventId: string, refetchInterval?:
     }
 
     if (!attendeeObjects || !dynamicFields || attendeeObjects.length === 0) {
+        console.log('No attendees found (empty objects or dynamic fields)');
         return {
             attendees: [],
             isLoading: false,
@@ -173,6 +184,8 @@ export const useGetEventAttendeesFromTable = (eventId: string, refetchInterval?:
                             registrationData[registrationFields[idx].name] = bytesToString(value);
                         }
                     });
+
+                    console.log(`Parsed attendee ${address}:`, registrationData);
 
                     attendees.push({
                         id: address,
@@ -233,6 +246,7 @@ export const useGetEventAttendeesWithAccounts = (eventId: string, refetchInterva
 
     // Extract unique addresses
     const uniqueAddresses = Array.from(new Set(baseAttendees.map(a => a.address)));
+    console.log('Unique Attendee Addresses:', uniqueAddresses);
 
     // Derive account IDs
     const accountIdsWithAddress: { id: string; address: string }[] = [];
@@ -244,6 +258,7 @@ export const useGetEventAttendeesWithAccounts = (eventId: string, refetchInterva
                 bcs.Address.serialize(address).toBytes(),
             );
             accountIdsWithAddress.push({ id: derivedId, address });
+            console.log(`Derived account ID for attendee ${address}:`, derivedId);
         } catch (error) {
             console.error(`Error deriving account ID for ${address}:`, error);
         }

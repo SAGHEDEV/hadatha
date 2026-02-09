@@ -30,7 +30,7 @@ const Header = () => {
     const handleDisconnect = () => {
         disconnect()
         setIsMobileMenuOpen(false)
-        router.push("/")
+        // router.push("/")
     }
 
     const handleNavClick = (href: string, disabled: boolean) => {

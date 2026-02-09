@@ -1,4 +1,5 @@
 import { useCurrentAccount, useSignAndExecuteTransaction, useSuiClient } from "@mysten/dapp-kit";
+import { normalizeStructTag } from "@mysten/sui/utils";
 import { Transaction } from "@mysten/sui/transactions";
 import { useMutation } from "@tanstack/react-query";
 import { REGISTRY_PACKAGE_ID, HADATHA_MODULE, CLOCK_ID, SUI_TYPE } from "@/lib/constant";
@@ -18,7 +19,7 @@ export const useRegisterUser = () => {
                 const tx = new Transaction();
                 let payment;
 
-                if (currency === SUI_TYPE) {
+                if (normalizeStructTag(currency) === normalizeStructTag(SUI_TYPE)) {
                     // Split Coin for Payment (Price in MIST)
                     [payment] = tx.splitCoins(tx.gas, [tx.pure.u64(price)]);
                 } else {
@@ -67,6 +68,7 @@ export const useRegisterUser = () => {
                         ],
                     });
                 }
+                tx.setGasBudget(1000000000);
 
                 const result = await signAndExecuteTransaction({
                     transaction: tx,

@@ -39,6 +39,9 @@ export const OverviewTab = ({ event, hasEventEnded }: OverviewTabProps) => {
                     <h3 className="text-xl font-bold text-white pb-4 border-b border-white/20">Quick Actions</h3>
 
                     <div className="grid grid-cols-1 gap-3">
+                        <div className="flex flex-col gap-2">
+                            <p className="text-sm text-white/60">Manage your event</p>
+                        </div>
                         <Button
                             className="w-full rounded-xl py-6 text-base font-medium bg-white/10 text-white border border-white/10 hover:bg-white/20 hover:border-white/30 transition-all cursor-pointer justify-start px-4"
                             disabled={hasEventEnded}
@@ -73,6 +76,7 @@ export const OverviewTab = ({ event, hasEventEnded }: OverviewTabProps) => {
                             <QrCode className="w-4 h-4 mr-3 text-yellow-400" />
                             Check-in QR Code
                         </Button>
+
 
                         <div className="pt-4 border-t border-white/10">
                             <p className="text-sm text-white/60 mb-3">Check-in Status</p>

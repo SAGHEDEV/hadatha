@@ -315,6 +315,7 @@ export const useGetEventById = (eventId: string, refetchInterval?: number) => {
     console.log('Single event query result:', { data, isLoading, error });
     console.log('Event data content:', data?.data?.content);
 
+    console.log(data)
     // Extract organizer addresses
     const organizerAddresses = data?.data?.content?.dataType === "moveObject"
         ? ((data.data.content as any).fields.organizers as string[])
@@ -506,8 +507,19 @@ export const useGetEventByHex = (hex: string, refetchInterval?: number) => {
 
     const event = events.find(e => e.event_hex === hex);
 
+    // We need to return the event with the attendees fetching logic attached
+    // This is handled in the component usually, but here we can return the ID for the component to use
+    // checking if we can reuse useGetEventByIdWithAttendees logic here
+
     return { event: event || null, isLoading, error, refetch };
 };
+
+// New Hook: Get Event ID from Hex
+export const useGetEventIdFromHex = (hex: string) => {
+    const { events } = useGetAllEventDetails();
+    const event = events.find(e => e.event_hex === hex);
+    return event?.id;
+}
 
 // Get events organized by a specific address
 export const useGetEventsByOrganizer = (organizerAddress: string, refetchInterval?: number) => {
@@ -520,10 +532,67 @@ export const useGetEventsByOrganizer = (organizerAddress: string, refetchInterva
     return { events: organizerEvents, isLoading, error, refetch };
 };
 
+export const useGetEventByHexWithAttendees = (hex: string, refetchInterval?: number) => {
+    // 1. Get all events to find the ID corresponding to the HEX
+    const { event: basicEvent, isLoading: eventLoading, error: eventError, refetch: refetchEvent } = useGetEventByHex(hex, refetchInterval);
+
+    // 2. Use the ID to get attendees (skip if no ID found yet)
+    const {
+        attendees,
+        isLoading: attendeesLoading,
+        error: attendeesError,
+        summary,
+        refetch: refetchAttendees
+    } = useGetEventAttendees(basicEvent?.id || "", refetchInterval);
+
+    // Refetch function
+    const refetch = async () => {
+        await Promise.all([refetchEvent(), refetchAttendees()]);
+    };
+
+    if (eventLoading || (basicEvent?.id && attendeesLoading)) {
+        return {
+            event: null,
+            attendees: [],
+            isLoading: true,
+            error: null,
+            summary: { total: 0, checkedIn: 0, nftMinted: 0 },
+            refetch
+        };
+    }
+
+    if (eventError || attendeesError) {
+        return {
+            event: null,
+            attendees: [],
+            isLoading: false,
+            error: eventError || attendeesError,
+            summary: { total: 0, checkedIn: 0, nftMinted: 0 },
+            refetch
+        };
+    }
+
+    // Merge
+    const eventWithAttendees = basicEvent ? {
+        ...basicEvent,
+        attendees: attendees.map(a => a.address),
+        attendeeDetails: attendees,
+    } : null;
+
+    return {
+        event: eventWithAttendees,
+        attendees,
+        isLoading: false,
+        error: null,
+        summary,
+        refetch
+    };
+}
+
 export const useGetEventByIdWithAttendees = (eventId: string, refetchInterval?: number) => {
     // Get basic event data
     const { event, isLoading: eventLoading, error: eventError, refetch: refetchEvent } = useGetEventById(eventId, refetchInterval);
-
+    console.log(event)
     // Get attendees data
     const {
         attendees,
@@ -532,7 +601,7 @@ export const useGetEventByIdWithAttendees = (eventId: string, refetchInterval?: 
         summary,
         refetch: refetchAttendees
     } = useGetEventAttendees(eventId, refetchInterval);
-
+    console.log(attendees)
     // Refetch function that triggers both event and attendees queries
     const refetch = async () => {
         await Promise.all([refetchEvent(), refetchAttendees()]);

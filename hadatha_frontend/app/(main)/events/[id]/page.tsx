@@ -1,7 +1,11 @@
 "use client";
 
 import EventDetails from "@/components/miscellneous/EventDetails";
-import { useGetEventByIdWithAttendees, useGetEventByHex } from "@/hooks/sui/useGetAllEvents";
+import {
+    useGetEventByIdWithAttendees,
+    useGetEventByHex,
+    useGetEventByHexWithAttendees,
+} from "@/hooks/sui/useGetAllEvents";
 import { useParams } from "next/navigation";
 import LoadingState from "@/components/miscellneous/LoadingState";
 
@@ -15,14 +19,16 @@ const EventDetailsPage = () => {
     const {
         event: objectEvent,
         isLoading: objectLoading,
-        error: objectError
+        error: objectError,
+        refetch: refetchObject
     } = useGetEventByIdWithAttendees(isObjectId ? id : "", 1000);
 
     const {
         event: hexEvent,
         isLoading: hexLoading,
-        error: hexError
-    } = useGetEventByHex(!isObjectId ? id : "", 1000);
+        error: hexError,
+        refetch: refetchHex
+    } = useGetEventByHexWithAttendees(!isObjectId ? id : "", 1000);
 
     const isLoading = isObjectId ? objectLoading : hexLoading;
     const error = isObjectId ? objectError : hexError;
@@ -52,8 +58,16 @@ const EventDetailsPage = () => {
         );
     }
 
+    const refetchAll = async () => {
+        if (isObjectId) {
+            await refetchObject();
+        } else {
+            await refetchHex();
+        }
+    }
+
     return (
-        <EventDetails event={event} />
+        <EventDetails event={event} onRegisterSuccess={refetchAll} />
     );
 };
 

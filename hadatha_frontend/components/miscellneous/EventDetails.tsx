@@ -60,9 +60,11 @@ const formatTime = (dateString: string): string => {
 const EventDetails = ({
     event,
     preview = false,
+    onRegisterSuccess,
 }: {
     event: Event;
     preview?: boolean;
+    onRegisterSuccess?: () => void;
 }) => {
     const [isRegistrationModalOpen, setIsRegistrationModalOpen] = useState(false);
     const [isCheckInModalOpen, setIsCheckInModalOpen] = useState(false);
@@ -77,10 +79,22 @@ const EventDetails = ({
         currentAccount &&
         event?.organizers.some((org) => normalizeSuiAddress(org.address) === normalizeSuiAddress(currentAccount?.address));
 
-    // Check if user is already registered
+    const [hasJustRegistered, setHasJustRegistered] = useState(false);
+
+    // Check if user is already registered (strict check)
+    // We also check local state to handle optimistic updates immediately after registration
     const isRegistered =
-        currentAccount?.address &&
-        event?.attendees?.includes(currentAccount?.address);
+        hasJustRegistered ||
+        (currentAccount?.address &&
+            event?.attendees?.some(addr => normalizeSuiAddress(addr) === normalizeSuiAddress(currentAccount.address || "")));
+
+    // Handle registration success
+    const handleRegisterSuccess = () => {
+        setHasJustRegistered(true);
+        if (onRegisterSuccess) {
+            onRegisterSuccess();
+        }
+    };
 
     // Check if user has checked in
     const isCheckedIn =
@@ -108,8 +122,9 @@ const EventDetails = ({
         );
 
     // Check if event is full
-    const isEventFull =
-        (event?.attendeesCount || 0) >= (event?.maxAttendees || 0);
+    // Optimistically update capacity if just registered
+    const currentAttendeesCount = hasJustRegistered ? (event?.attendeesCount || 0) + 1 : (event?.attendeesCount || 0);
+    const isEventFull = currentAttendeesCount >= (event?.maxAttendees || 0);
 
     // Check if event has ended
     const hasEventEnded = new Date(event.end_time) <= new Date();
@@ -124,7 +139,7 @@ const EventDetails = ({
     const ticketTiers = event.ticket_tiers || []
 
     console.log(event)
-    
+
 
     return (
         <div className="flex flex-col gap-8">
@@ -254,10 +269,10 @@ const EventDetails = ({
                                 {event.attendeeDetails?.slice(0, 5).map((detail, i) => (
                                     <div
                                         key={i}
-                                        className="relative w-12 h-12 rounded-full border-2 border-black overflow-hidden"
+                                        className="relative w-12 h-12 rounded-full border-2 border-black overflow-hidden bg-gray-800"
                                     >
                                         <Image
-                                            src={detail.avatarUrl}
+                                            src={detail?.avatarUrl || `https://ui-avatars.com/api/?name=${detail.address.slice(0, 2)}&background=random`}
                                             alt="Attendee"
                                             fill
                                             className="object-cover"
@@ -415,7 +430,7 @@ const EventDetails = ({
 
                                     {/* Already Registered Message */}
                                     {isRegistered && !isCheckedIn && (
-                                        <div className="w-full rounded-full py-3 text-lg font-semibold bg-green-600/10 text-green-400 border border-green-500/50 text-center">
+                                        <div className="w-full rounded-full py-3 text-lg font-semibold bg-green-600/10 text-green-400 border border-green-500/50 text-center truncate px-3">
                                             ✓ Registered {userTicketTierName ? `as ${userTicketTierName}` : ""}
                                         </div>
                                     )}
@@ -528,6 +543,7 @@ const EventDetails = ({
                 event={event}
                 isOpen={isRegistrationModalOpen}
                 setIsOpen={setIsRegistrationModalOpen}
+                onRegisterSuccess={handleRegisterSuccess}
             />
             <ShareModal
                 event={event}

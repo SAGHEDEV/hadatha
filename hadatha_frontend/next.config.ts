@@ -1,11 +1,6 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  experimental: {
-    ppr: true,
-    adjustFontFallbacks: true,
-    instrumentationHook: true,
-  },
   /* config options here */
   images: {
     remotePatterns: [

@@ -4,7 +4,7 @@
 import { useState, useEffect, useCallback } from "react"
 import { useCurrentAccount, useSuiClient } from "@mysten/dapp-kit"
 import { Notification, NotificationType } from "@/types/notification"
-import { CheckCircle2, AlertCircle, Calendar, User, Bell } from "lucide-react"
+import { CheckCircle2, AlertCircle, Calendar, User, Bell, Edit } from "lucide-react"
 import { REGISTRY_PACKAGE_ID } from "@/lib/constant"
 
 const NOTIFICATION_STORAGE_KEY = "hadatha_notifications"
@@ -13,23 +13,90 @@ const LAST_CHECKED_KEY = "hadatha_last_checked"
 // Debug flag - set to true for console logs
 const DEBUG = true
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const log = (...args: any[]) => {
     if (DEBUG) console.log("[Notifications]", ...args)
 }
 
 // Helper function to decode byte array to string
 const decodeBytes = (bytes: number[] | string): string => {
-    console.log(bytes)
     if (typeof bytes === 'string') return bytes
     if (!Array.isArray(bytes)) return ''
 
     try {
-        // Convert byte array to string
         return new TextDecoder().decode(new Uint8Array(bytes))
     } catch (error) {
         console.error("Failed to decode bytes:", error)
         return bytes.toString()
+    }
+}
+
+// Helper to check if user is event organizer or co-organizer
+const isUserOrganizer = async (
+    suiClient: any,
+    eventId: string,
+    userAddress: string
+): Promise<boolean> => {
+    try {
+        const eventObject = await suiClient.getObject({
+            id: eventId,
+            options: {
+                showOwner: true,
+                showContent: true
+            },
+        })
+
+        // Check if user is the owner (main organizer)
+        if (eventObject.data?.owner &&
+            typeof eventObject.data.owner === 'object' &&
+            'AddressOwner' in eventObject.data.owner &&
+            eventObject.data.owner.AddressOwner === userAddress) {
+            return true
+        }
+
+        // Check if user is a co-organizer
+        if (eventObject.data?.content && 'fields' in eventObject.data.content) {
+            const fields = eventObject.data.content.fields as any
+            if (fields.organizers && Array.isArray(fields.organizers)) {
+                return fields.organizers.some((org: any) =>
+                    org === userAddress || org.fields?.address === userAddress
+                )
+            }
+        }
+
+        return false
+    } catch (error) {
+        log("Error checking organizer status:", error)
+        return false
+    }
+}
+
+// Helper to check if user is registered for an event
+const isUserRegistered = async (
+    suiClient: any,
+    eventId: string,
+    userAddress: string
+): Promise<boolean> => {
+    try {
+        const eventObject = await suiClient.getObject({
+            id: eventId,
+            options: { showContent: true },
+        })
+
+        if (eventObject.data?.content && 'fields' in eventObject.data.content) {
+            const fields = eventObject.data.content.fields as any
+
+            // Check attendees list
+            if (fields.attendees && Array.isArray(fields.attendees)) {
+                return fields.attendees.some((attendee: any) =>
+                    attendee === userAddress || attendee.fields?.address === userAddress
+                )
+            }
+        }
+
+        return false
+    } catch (error) {
+        log("Error checking registration status:", error)
+        return false
     }
 }
 
@@ -83,7 +150,6 @@ export const useNotifications = () => {
             return
         }
 
-        console.log("REGISTRY_PACKAGE_ID", REGISTRY_PACKAGE_ID)
         if (!REGISTRY_PACKAGE_ID) {
             console.error("PACKAGE_ID is not configured")
             setError("Package ID not configured")
@@ -98,7 +164,7 @@ export const useNotifications = () => {
             const lastChecked = localStorage.getItem(`${LAST_CHECKED_KEY}_${currentAccount.address}`)
             const lastCheckedTime = lastChecked
                 ? parseInt(lastChecked)
-                : Date.now() - 7 * 24 * 60 * 60 * 1000 // Last 7 days on first load
+                : Date.now() - 7 * 24 * 60 * 60 * 1000
 
             log("Last checked time:", new Date(lastCheckedTime).toISOString())
 
@@ -130,29 +196,22 @@ export const useNotifications = () => {
             for (const event of eventsResponse.data) {
                 try {
                     const eventTime = parseInt(event.timestampMs || "0")
-
-                    // Skip if we've already seen this event
                     const notifId = `${event.id.txDigest}_${event.id.eventSeq}`
-                    if (existingIds.has(notifId)) {
-                        continue
-                    }
 
-                    // Only process events newer than last check
-                    if (eventTime <= lastCheckedTime) {
-                        log("Skipping old event:", eventTime)
+                    // Skip if already seen or old
+                    if (existingIds.has(notifId) || eventTime <= lastCheckedTime) {
                         continue
                     }
 
                     const eventType = event.type.split("::").pop() || ""
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     const parsedFields = event.parsedJson as any
 
                     log("Processing event:", eventType, parsedFields)
 
                     switch (eventType) {
                         case "EventCreated": {
+                            // ONLY show to the creator
                             if (parsedFields.creator === currentAccount.address) {
-                                // Decode the title if it's a byte array
                                 const eventTitle = parsedFields.title
                                     ? decodeBytes(parsedFields.title)
                                     : 'Untitled Event'
@@ -167,13 +226,60 @@ export const useNotifications = () => {
                                     eventType: "EventCreated",
                                     eventId: parsedFields.event_id,
                                 })
-                                log("Added EventCreated notification for:", eventTitle)
+                                log("Added EventCreated notification for creator")
+                            }
+                            break
+                        }
+
+                        case "EventUpdated": {
+                            // Show to organizers AND registered attendees
+                            const isOrganizer = await isUserOrganizer(
+                                suiClient,
+                                parsedFields.event_id,
+                                currentAccount.address
+                            )
+                            const isRegistered = await isUserRegistered(
+                                suiClient,
+                                parsedFields.event_id,
+                                currentAccount.address
+                            )
+
+                            if (isOrganizer || isRegistered) {
+                                let eventTitle = "Event"
+                                try {
+                                    const eventObject = await suiClient.getObject({
+                                        id: parsedFields.event_id,
+                                        options: { showContent: true },
+                                    })
+                                    if (eventObject.data?.content && 'fields' in eventObject.data.content) {
+                                        const fields = eventObject.data.content.fields as any
+                                        if (fields.title) {
+                                            eventTitle = decodeBytes(fields.title)
+                                        }
+                                    }
+                                } catch (err) {
+                                    log("Error fetching event title:", err)
+                                }
+
+                                newNotifications.push({
+                                    id: notifId,
+                                    title: isOrganizer ? "Event Updated" : "Event You Registered For Was Updated",
+                                    description: isOrganizer
+                                        ? `Your event "${eventTitle}" has been updated.`
+                                        : `"${eventTitle}" has been updated. Check the latest details.`,
+                                    type: NotificationType.INFO,
+                                    timestamp: eventTime,
+                                    unread: true,
+                                    eventType: "EventUpdated",
+                                    eventId: parsedFields.event_id,
+                                })
+                                log("Added EventUpdated notification for", isOrganizer ? "organizer" : "attendee")
                             }
                             break
                         }
 
                         case "EventRegistered": {
-                            // For attendee
+                            // Show to the attendee who registered
                             if (parsedFields.attendee === currentAccount.address) {
                                 newNotifications.push({
                                     id: notifId,
@@ -188,52 +294,48 @@ export const useNotifications = () => {
                                 log("Added EventRegistered notification for attendee")
                             }
 
-                            // For organizer - check event ownership
-                            try {
-                                const eventObject = await suiClient.getObject({
-                                    id: parsedFields.event_id,
-                                    options: {
-                                        showOwner: true,
-                                        showContent: true
-                                    },
-                                })
+                            // Show to event organizers (not the attendee)
+                            const isOrganizer = await isUserOrganizer(
+                                suiClient,
+                                parsedFields.event_id,
+                                currentAccount.address
+                            )
 
-                                if (eventObject.data?.owner &&
-                                    eventObject.data.owner &&
-                                    typeof eventObject.data.owner === 'object' &&
-                                    'AddressOwner' in eventObject.data.owner &&
-                                    eventObject.data.owner.AddressOwner === currentAccount.address) {
-
-                                    // Try to get event name from content
-                                    let eventName = "your event"
-                                    if (eventObject.data.content && 'fields' in eventObject.data.content) {
+                            if (isOrganizer && parsedFields.attendee !== currentAccount.address) {
+                                let eventName = "your event"
+                                try {
+                                    const eventObject = await suiClient.getObject({
+                                        id: parsedFields.event_id,
+                                        options: { showContent: true },
+                                    })
+                                    if (eventObject.data?.content && 'fields' in eventObject.data.content) {
                                         const fields = eventObject.data.content.fields as any
                                         if (fields.title) {
                                             eventName = decodeBytes(fields.title)
                                         }
                                     }
-
-                                    newNotifications.push({
-                                        id: `${notifId}_organizer`,
-                                        title: "New Event Registration",
-                                        description: `Someone registered for ${eventName}.`,
-                                        type: NotificationType.INFO,
-                                        timestamp: eventTime,
-                                        unread: true,
-                                        eventType: "EventRegistered",
-                                        eventId: parsedFields.event_id,
-                                    })
-                                    log("Added EventRegistered notification for organizer")
+                                } catch (err) {
+                                    log("Error fetching event name:", err)
                                 }
-                            } catch (err) {
-                                log("Error checking event ownership:", err)
+
+                                newNotifications.push({
+                                    id: `${notifId}_organizer`,
+                                    title: "New Registration",
+                                    description: `Someone registered for "${eventName}".`,
+                                    type: NotificationType.INFO,
+                                    timestamp: eventTime,
+                                    unread: true,
+                                    eventType: "EventRegistered",
+                                    eventId: parsedFields.event_id,
+                                })
+                                log("Added EventRegistered notification for organizer")
                             }
                             break
                         }
 
                         case "EventCheckedIn": {
+                            // ONLY show to the attendee who checked in
                             if (parsedFields.attendee === currentAccount.address) {
-                                // Try to get event name
                                 let eventName = "the event"
                                 try {
                                     const eventObject = await suiClient.getObject({
@@ -253,7 +355,7 @@ export const useNotifications = () => {
                                 newNotifications.push({
                                     id: notifId,
                                     title: "Checked In Successfully",
-                                    description: `You've been checked in to ${eventName}.`,
+                                    description: `You've been checked in to "${eventName}".`,
                                     type: NotificationType.SUCCESS,
                                     timestamp: eventTime,
                                     unread: true,
@@ -266,11 +368,12 @@ export const useNotifications = () => {
                         }
 
                         case "AccountCreated": {
+                            // ONLY show to the account owner
                             if (parsedFields.owner === currentAccount.address) {
                                 newNotifications.push({
                                     id: notifId,
-                                    title: "Account Created",
-                                    description: "Your Hadatha account has been created successfully.",
+                                    title: "Welcome to Hadatha!",
+                                    description: "Your account has been created successfully.",
                                     type: NotificationType.SUCCESS,
                                     timestamp: eventTime,
                                     unread: true,
@@ -282,8 +385,8 @@ export const useNotifications = () => {
                         }
 
                         case "AttendanceNFTMinted": {
+                            // ONLY show to the attendee who received the NFT
                             if (parsedFields.attendee === currentAccount.address) {
-                                // Try to get NFT name
                                 let nftName = "Your attendance NFT"
                                 try {
                                     const eventObject = await suiClient.getObject({
@@ -302,8 +405,8 @@ export const useNotifications = () => {
 
                                 newNotifications.push({
                                     id: notifId,
-                                    title: "NFT Minted",
-                                    description: `${nftName} has been minted successfully.`,
+                                    title: "NFT Minted! 🎉",
+                                    description: `${nftName} has been minted to your wallet.`,
                                     type: NotificationType.SUCCESS,
                                     timestamp: eventTime,
                                     unread: true,
@@ -316,11 +419,12 @@ export const useNotifications = () => {
                         }
 
                         case "NFTCollectionEnabled": {
+                            // ONLY show to the organizer who enabled it
                             if (parsedFields.enabled_by === currentAccount.address) {
                                 newNotifications.push({
                                     id: notifId,
                                     title: "NFT Collection Enabled",
-                                    description: "NFT collection has been enabled for your event.",
+                                    description: "Attendees can now receive NFTs for your event.",
                                     type: NotificationType.INFO,
                                     timestamp: eventTime,
                                     unread: true,
@@ -340,21 +444,18 @@ export const useNotifications = () => {
                 }
             }
 
-            log("New notifications created:", newNotifications.length)
+            log("New personalized notifications created:", newNotifications.length)
 
             if (newNotifications.length > 0) {
-                // Merge with existing notifications
                 const allNotifications = [...newNotifications, ...notifications]
                     .sort((a, b) => b.timestamp - a.timestamp)
-                    .slice(0, 50) // Keep only last 50 notifications
+                    .slice(0, 50)
 
                 saveNotifications(allNotifications)
             }
 
-            // Update last checked time
             localStorage.setItem(`${LAST_CHECKED_KEY}_${currentAccount.address}`, Date.now().toString())
 
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (error: any) {
             console.error("Failed to fetch events:", error)
             setError(error?.message || "Failed to fetch notifications")
@@ -367,10 +468,7 @@ export const useNotifications = () => {
     useEffect(() => {
         if (!currentAccount) return
 
-        // Initial fetch
         fetchNewEvents()
-
-        // Poll every 30 seconds
         const interval = setInterval(() => {
             log("Polling for new events...")
             fetchNewEvents()
@@ -378,7 +476,7 @@ export const useNotifications = () => {
 
         return () => clearInterval(interval)
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [currentAccount?.address]) // Only re-run when account changes
+    }, [currentAccount?.address])
 
     // Mark notification as read
     const markAsRead = useCallback((notificationId: string) => {
@@ -410,6 +508,8 @@ export const useNotifications = () => {
         switch (notification.eventType) {
             case "EventCreated":
                 return <Calendar className="w-4 h-4 text-blue-400" />
+            case "EventUpdated":
+                return <Edit className="w-4 h-4 text-yellow-400" />
             case "EventRegistered":
                 return <CheckCircle2 className="w-4 h-4 text-green-400" />
             case "EventCheckedIn":

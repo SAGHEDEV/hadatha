@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/popover"
 import { Badge } from "@/components/ui/badge"
 
-const AVAILABLE_TAGS = [
+export const AVAILABLE_TAGS = [
     "Technology",
     "Music",
     "Workshop",

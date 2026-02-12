@@ -5,18 +5,20 @@ import EventCard from "@/components/miscellneous/EventCard"
 import { Search, MapPin } from "lucide-react"
 import { useGetAllEventDetails } from "@/hooks/sui/useGetAllEvents"
 import LoadingState from "@/components/miscellneous/LoadingState"
+import { AVAILABLE_TAGS } from "@/components/events/create/TagMultiSelect"
 
 const EventsPage = () => {
     const [activeCategory, setActiveCategory] = useState("All")
     const [activeLocation, setActiveLocation] = useState("All")
     const [eventStatus, setEventStatus] = useState<"ongoing" | "past">("ongoing")
+    const [searchQuery, setSearchQuery] = useState("")
 
-    const categories = ["All", "Tech", "Art", "Music", "Business", "Social"]
+    const categories = ["All", ...AVAILABLE_TAGS]
     const locations = ["All", "Online", "In-Person", "Nearest to me"]
 
     const { events, isLoading, error } = useGetAllEventDetails(1000)
 
-    // Filter events based on status and visibility
+    // Filter events based on status, category, location, and search query
     const filteredEvents = useMemo(() => {
         if (!events) return []
 
@@ -25,17 +27,41 @@ const EventsPage = () => {
             if (event.status === "hidden") return false
 
             // Filter by ongoing or past
-            // const eventEndTime = Number(event.end_time)
-
+            const isOngoing = new Date(event.end_time) >= new Date()
             if (eventStatus === "ongoing") {
-                return new Date(event.end_time) >= new Date()
+                if (!isOngoing) return false
             } else {
-                return new Date(event.start_time) <= new Date() && new Date(event.end_time) <= new Date()
+                if (isOngoing) return false
             }
-        })
-    }, [events, eventStatus])
 
-    // console.log("Filtered events:", filteredEvents)
+            // Filter by active category
+            if (activeCategory !== "All") {
+                if (!event.tags?.includes(activeCategory)) return false
+            }
+
+            // Filter by active location
+            if (activeLocation !== "All") {
+                const loc = event.location?.toLowerCase() || ""
+                if (activeLocation === "Online") {
+                    if (!loc.includes("online") && !loc.includes("remote") && !loc.includes("virtual")) return false
+                } else if (activeLocation === "In-Person") {
+                    if (loc.includes("online") || loc.includes("remote") || loc.includes("virtual")) return false
+                }
+                // "Nearest to me" is a placeholder for now as we don't have user location
+            }
+
+            // Filter by search query
+            if (searchQuery.trim() !== "") {
+                const query = searchQuery.toLowerCase()
+                const title = event.title?.toLowerCase() || ""
+                const description = event.description?.toLowerCase() || ""
+                const location = event.location?.toLowerCase() || ""
+                if (!title.includes(query) && !description.includes(query) && !location.includes(query)) return false
+            }
+
+            return true
+        })
+    }, [events, eventStatus, activeCategory, activeLocation, searchQuery])
 
     if (isLoading) {
         return (
@@ -91,6 +117,8 @@ const EventsPage = () => {
                     <input
                         type="text"
                         placeholder="Search events..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
                         className="w-full bg-white/5 border border-white/10 rounded-full pl-10 pr-4 py-2.5 text-white placeholder:text-white/20 focus:outline-none focus:border-white/30 transition-all"
                     />
                 </div>

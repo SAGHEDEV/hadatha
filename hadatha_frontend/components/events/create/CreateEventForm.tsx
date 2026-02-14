@@ -162,7 +162,8 @@ export function CreateEventForm({ isLoading }: { isLoading: boolean }) {
                                             value={field.value ?? ''}
                                             onChange={field.onChange}
                                             placeholder="Tell attendees what your event is about..."
-                                            className="min-h-[390px] max-h-[400px] overflow-auto    "
+                                            minHeight="300px"
+                                            maxHeight="300px"
                                         />
                                     </FormControl>
                                     <FormMessage />

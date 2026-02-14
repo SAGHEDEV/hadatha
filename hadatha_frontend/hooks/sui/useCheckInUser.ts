@@ -1,7 +1,7 @@
 import { useCurrentAccount, useSignAndExecuteTransaction } from "@mysten/dapp-kit";
 import { Transaction } from "@mysten/sui/transactions";
 import { useMutation } from "@tanstack/react-query";
-import { REGISTRY_PACKAGE_ID, HADATHA_MODULE, CLOCK_ID } from "@/lib/constant";
+import { REGISTRY_PACKAGE_ID, EVENTS_MODULE, CLOCK_ID } from "@/lib/constant";
 
 export const useCheckInUser = () => {
     const account = useCurrentAccount();
@@ -18,7 +18,7 @@ export const useCheckInUser = () => {
 
                 if (accountId) {
                     tx.moveCall({
-                        target: `${REGISTRY_PACKAGE_ID}::${HADATHA_MODULE}::checkin_event`,
+                        target: `${REGISTRY_PACKAGE_ID}::${EVENTS_MODULE}::checkin_event`,
                         arguments: [
                             tx.object(event),
                             tx.pure.address(attendee),
@@ -28,7 +28,7 @@ export const useCheckInUser = () => {
                     });
                 } else {
                     tx.moveCall({
-                        target: `${REGISTRY_PACKAGE_ID}::${HADATHA_MODULE}::checkin_event_guest`,
+                        target: `${REGISTRY_PACKAGE_ID}::${EVENTS_MODULE}::checkin_event_guest`,
                         arguments: [
                             tx.object(event),
                             tx.pure.address(attendee),

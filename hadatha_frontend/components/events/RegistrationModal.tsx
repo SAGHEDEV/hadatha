@@ -33,7 +33,6 @@ const formatMoveError = (errorMsg: string): string => {
     if (errorMsg.includes("function: 14")) return "You are already registered for this event.";
     if (errorMsg.includes("function: 15")) return "This event is full.";
     if (errorMsg.includes("function: 16")) return "Registration is closed.";
-    // Add more mappings as discovered
     return "An error occurred during transaction execution.";
 };
 
@@ -73,9 +72,7 @@ export function RegistrationModal({ event, isOpen, setIsOpen, onRegisterSuccess 
                 validator = z.string().email("Invalid email address")
             }
 
-            // Make it required by default
             validator = validator.min(1, `${field.name} is required`)
-
             schemaShape[field.name] = validator
         })
 
@@ -89,23 +86,16 @@ export function RegistrationModal({ event, isOpen, setIsOpen, onRegisterSuccess 
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const onSubmit = async (data: any) => {
-
         if (!currentAccount) {
             setOpenEffectModal({ open: true, title: "Please connect your wallet first.", message: "", type: "error" })
             return;
         }
 
         try {
-            // Convert form data to array of strings in the order of registration_fields
-            // The contract expects vector<vector<u8>>, so we need to convert strings to byte arrays
             const registrationValues = event.registration_fields?.map(field => {
                 const value = data[field.name] || "";
-                return value.toString(); // Convert to string
+                return value.toString();
             }) || [];
-
-            // console.log('Submitting registration with values:', registrationValues);
-            // console.log('Event ID:', event.id);
-            // console.log('Account ID:', derivedAddress);
 
             await registerUser({
                 event: event.id,
@@ -117,9 +107,8 @@ export function RegistrationModal({ event, isOpen, setIsOpen, onRegisterSuccess 
             });
 
             setOpenEffectModal({ open: true, title: "Successfully registered for the event!", message: "", type: "success" })
-            reset(); // Reset form after successful registration
+            reset();
 
-            // Call the success callback if provided
             if (onRegisterSuccess) {
                 onRegisterSuccess();
             }
@@ -128,21 +117,18 @@ export function RegistrationModal({ event, isOpen, setIsOpen, onRegisterSuccess 
         } catch (error) {
             console.error("Registration failed:", error);
 
-            // Parse error message for better user feedback
             let errorMessage = "Failed to register. Please try again.";
 
             if (error instanceof Error) {
                 const errorMessageStr = error.message;
 
                 if (errorMessageStr.includes('EAlreadyRegistered') || errorMessageStr.includes('MoveAbort') && errorMessageStr.includes('function: 14')) {
-                    // Function 14 corresponds to EAlreadyRegistered based on user report
                     errorMessage = "You are already registered for this event.";
-                } else if (errorMessageStr.includes('EEventFull') || errorMessageStr.includes('MoveAbort') && errorMessageStr.includes('function: 15')) { // Guessing 15 for EventFull, adjust based on Move codes
+                } else if (errorMessageStr.includes('EEventFull') || errorMessageStr.includes('MoveAbort') && errorMessageStr.includes('function: 15')) {
                     errorMessage = "This event is full. No more spots available.";
                 } else if (errorMessageStr.includes('EEventClosed')) {
                     errorMessage = "Registration for this event is closed.";
                 } else if (errorMessageStr.includes('MoveAbort')) {
-                    // For generic MoveAbort, try to give a bit more context if possible, or stick to generic
                     errorMessage = `Transaction failed: ${formatMoveError(errorMessageStr)}`;
                 }
             }
@@ -151,11 +137,9 @@ export function RegistrationModal({ event, isOpen, setIsOpen, onRegisterSuccess 
         }
     }
 
-    console.log(event.registration_fields)
-
     return (
         <ModalWrapper open={isOpen} setOpen={setIsOpen}>
-            <div className="w-full max-w-[500px] text-white p-4">
+            <div className="w-full max-w-[550px] text-white p-6">
                 <div className="flex flex-col space-y-1.5 text-center sm:text-left mb-6">
                     <h2 className="text-2xl font-bold">Register for {event.title}</h2>
                     <p className="text-white/60 text-sm">
@@ -165,46 +149,75 @@ export function RegistrationModal({ event, isOpen, setIsOpen, onRegisterSuccess 
 
                 {event.ticket_tiers && event.ticket_tiers.length > 1 && (
                     <div className="mb-6 space-y-3">
-                        <Label className="text-white">Select Ticket Tier</Label>
+                        <Label className="text-white font-semibold">Select Ticket Tier</Label>
                         <RadioGroup
+                            value={selectedTier?.name || ""}
                             onValueChange={(val) => {
                                 const tier = event.ticket_tiers?.find(t => t.name === val) || null
                                 setSelectedTier(tier)
                             }}
-                            className="flex flex-col space-y-2"
+                            className="flex flex-col space-y-3"
                         >
                             {event.ticket_tiers.map((tier, index) => (
-                                <div key={index} className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all ${selectedTier?.name === tier.name ? "bg-white/10 border-white" : "bg-white/5 border-white/10 hover:bg-white/10"}`}>
-                                    <div className="flex items-center space-x-3">
-                                        <RadioGroupItem value={tier.name} id={tier.name} className="border-white text-white" />
-                                        <Label htmlFor={tier.name} className="flex flex-col cursor-pointer">
-                                            <span className="font-medium text-white">{tier.name}</span>
-                                            <span className="text-xs text-white/50">{tier.quantity} available</span>
-                                        </Label>
+                                <label
+                                    key={index}
+                                    htmlFor={`tier-${tier.name}`}
+                                    className={`flex items-center justify-between p-4 rounded-2xl border-2 cursor-pointer transition-all group ${selectedTier?.name === tier.name
+                                            ? "bg-white/10 border-white shadow-lg scale-[1.02]"
+                                            : "bg-white/5 border-white/10 hover:bg-white/8 hover:border-white/20 hover:scale-[1.01]"
+                                        }`}
+                                >
+                                    <div className="flex items-center space-x-4 flex-1">
+                                        <RadioGroupItem
+                                            value={tier.name}
+                                            id={`tier-${tier.name}`}
+                                            className="border-white text-white shrink-0"
+                                        />
+                                        <div className="flex flex-col">
+                                            <span className="font-semibold text-white text-base">{tier.name}</span>
+                                            <span className="text-xs text-white/50 mt-0.5">
+                                                {tier.quantity} {tier.quantity === 1 ? 'spot' : 'spots'} available
+                                            </span>
+                                        </div>
                                     </div>
-                                    <div className="w-full max-w-fit text-amber-400 font-mono font-medium">
-                                        {Number(tier.price) === 0 ? "Free" : `${formatAmount(tier.price)} ${getCurrencyLabel(tier.currency || "SUI")}`}
+                                    <div className="text-right ml-4">
+                                        <div className="text-amber-400 font-mono font-bold text-lg">
+                                            {Number(tier.price) === 0 ? "Free" : formatAmount(tier.price)}
+                                        </div>
+                                        {Number(tier.price) > 0 && (
+                                            <div className="text-xs text-amber-300/60 font-medium mt-0.5">
+                                                {getCurrencyLabel(tier.currency || "SUI")}
+                                            </div>
+                                        )}
                                     </div>
-                                </div>
+                                </label>
                             ))}
                         </RadioGroup>
-                        <div className="flex gap-4 mt-2 px-1">
-                            <div className="text-[10px] text-white/40 uppercase tracking-wider">Your Balance:</div>
-                            <div className="text-[10px] text-white/60 font-mono">SUI: {formattedBalances.sui}</div>
-                            <div className="text-[10px] text-white/60 font-mono">USDC: {formattedBalances.usdc}</div>
+
+                        {/* Wallet Balance Display */}
+                        <div className="flex items-center gap-6 mt-3 px-2 py-2 bg-white/5 rounded-xl border border-white/10">
+                            <div className="text-xs text-white/50 uppercase tracking-wider font-semibold">Your Balance:</div>
+                            <div className="flex gap-4">
+                                <div className="text-xs text-white/70 font-mono">
+                                    <span className="text-white/50">SUI:</span> <span className="font-semibold">{formattedBalances.sui}</span>
+                                </div>
+                                <div className="text-xs text-white/70 font-mono">
+                                    <span className="text-white/50">USDC:</span> <span className="font-semibold">{formattedBalances.usdc}</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 )}
 
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
                     {!event.registration_fields || event.registration_fields.length === 0 ? (
-                        <div className="p-4 bg-white/5 border border-white/10 rounded-lg text-center">
-                            <p className="text-white/60">No registration fields required. Click register to continue.</p>
+                        <div className="p-4 bg-white/5 border border-white/10 rounded-xl text-center">
+                            <p className="text-white/60">No additional information required. Click register to continue.</p>
                         </div>
                     ) : (
                         event.registration_fields.map((field, index) => (
                             <div key={index} className="space-y-2">
-                                <Label className="text-white">
+                                <Label className="text-white font-medium">
                                     {field.name}
                                     <span className="text-red-400 ml-1">*</span>
                                 </Label>
@@ -234,16 +247,22 @@ export function RegistrationModal({ event, isOpen, setIsOpen, onRegisterSuccess 
                         ))
                     )}
 
-                    {/* Event Details Summary */}
-                    <div className="p-4 bg-white/5 border border-white/10 rounded-lg space-y-2">
-                        <p className="text-white/60 text-sm">Registration Summary</p>
+                    {/* Registration Summary */}
+                    <div className="p-5 bg-linear-to-br from-white/10 to-white/5 border border-white/20 rounded-2xl space-y-3">
+                        <p className="text-white/70 text-sm font-semibold uppercase tracking-wider">Registration Summary</p>
                         <div className="flex justify-between text-sm">
                             <span className="text-white/60">Event:</span>
-                            <span className="text-white font-medium">{event.title}</span>
+                            <span className="text-white font-semibold">{event.title}</span>
                         </div>
                         <div className="flex justify-between text-sm">
-                            <span className="text-white/60">Price:</span>
-                            <span className="text-white font-medium">
+                            <span className="text-white/60">Ticket Type:</span>
+                            <span className="text-white font-semibold">
+                                {selectedTier ? selectedTier.name : "Standard"}
+                            </span>
+                        </div>
+                        <div className="flex justify-between text-base border-t border-white/20 pt-3">
+                            <span className="text-white/70 font-semibold">Total Price:</span>
+                            <span className="text-amber-400 font-bold font-mono">
                                 {selectedTier
                                     ? (Number(selectedTier.price) === 0 ? "Free" : `${formatAmount(selectedTier.price)} ${getCurrencyLabel(selectedTier.currency || "SUI")}`)
                                     : (event.price === '0' ? 'Free' : event.price || 'Free')
@@ -251,15 +270,16 @@ export function RegistrationModal({ event, isOpen, setIsOpen, onRegisterSuccess 
                             </span>
                         </div>
                         {isInsufficientBalance && (
-                            <div className="p-2 bg-red-500/10 border border-red-500/20 rounded-md">
-                                <p className="text-red-400 text-xs font-medium flex items-center gap-1">
-                                    <span>⚠</span> Insufficient {getCurrencyLabel(selectedTier?.currency || "")} balance
+                            <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl">
+                                <p className="text-red-400 text-sm font-semibold flex items-center gap-2">
+                                    <span className="text-lg">⚠</span>
+                                    Insufficient {getCurrencyLabel(selectedTier?.currency || "")} balance
                                 </p>
                             </div>
                         )}
                         <div className="flex justify-between text-sm">
-                            <span className="text-white/60">Available Spots:</span>
-                            <span className="text-white font-medium">
+                            <span className="text-white/60">Spots Remaining:</span>
+                            <span className="text-white font-semibold">
                                 {selectedTier
                                     ? (selectedTier.quantity || 0)
                                     : (event.maxAttendees || 0) - (event.attendeesCount || 0)
@@ -268,7 +288,7 @@ export function RegistrationModal({ event, isOpen, setIsOpen, onRegisterSuccess 
                         </div>
                     </div>
 
-                    <div className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 gap-2 pt-4">
+                    <div className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-3 gap-3 pt-4">
                         <Button
                             type="button"
                             variant="ghost"
@@ -277,14 +297,14 @@ export function RegistrationModal({ event, isOpen, setIsOpen, onRegisterSuccess 
                                 setIsOpen(false);
                             }}
                             disabled={isRegistering}
-                            className="text-white py-6 hover:bg-white/10 border border-white/20 hover:text-white rounded-full cursor-pointer"
+                            className="text-white h-12 hover:bg-white/10 border border-white/20 hover:text-white rounded-xl"
                         >
                             Cancel
                         </Button>
                         <Button
                             type="submit"
-                            disabled={isRegistering || isInsufficientBalance || !selectedTier}
-                            className="bg-white text-black hover:bg-gray-200 px-6 py-6 cursor-pointer rounded-full disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled={isRegistering || isInsufficientBalance || (event.ticket_tiers && event.ticket_tiers.length > 0 && !selectedTier)}
+                            className="bg-white text-black hover:bg-gray-200 px-8 h-12 rounded-xl font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {isRegistering ? (
                                 <>
@@ -292,12 +312,18 @@ export function RegistrationModal({ event, isOpen, setIsOpen, onRegisterSuccess 
                                     Registering...
                                 </>
                             ) : (
-                                selectedTier ? `Register as ${selectedTier.name}` : "Complete Registration"
+                                selectedTier ? `Register - ${selectedTier.name}` : "Complete Registration"
                             )}
                         </Button>
                     </div>
                 </form>
-                <StatusModal isOpen={openEffectModal.open} onClose={() => setOpenEffectModal({ open: false, title: '', message: '', type: 'success' })} title={openEffectModal.title} description={openEffectModal.message} type={openEffectModal.type} />
+                <StatusModal
+                    isOpen={openEffectModal.open}
+                    onClose={() => setOpenEffectModal({ open: false, title: '', message: '', type: 'success' })}
+                    title={openEffectModal.title}
+                    description={openEffectModal.message}
+                    type={openEffectModal.type}
+                />
             </div>
         </ModalWrapper>
     )

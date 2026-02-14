@@ -43,7 +43,7 @@ export default function ManageEventPage() {
                 <Button
                     variant="ghost"
                     className="w-fit pl-0 text-white/60 hover:text-white"
-                    onClick={() => router.push(`/events/${eventId}`)}
+                    onClick={() => router.push(`/events/${event?.event_hex}`)}
                 >
                     <ArrowLeft className="w-4 h-4 mr-2" />
                     Back to Event Page

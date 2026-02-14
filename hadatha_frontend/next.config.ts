@@ -22,6 +22,10 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: "https",
+        hostname: "walrus-testnet-aggregator.redundex.com",
+      },
+      {
+        protocol: "https",
         hostname: "github.com",
       },
       {

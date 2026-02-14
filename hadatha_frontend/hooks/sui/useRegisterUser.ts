@@ -2,7 +2,7 @@ import { useCurrentAccount, useSignAndExecuteTransaction, useSuiClient } from "@
 import { normalizeStructTag } from "@mysten/sui/utils";
 import { Transaction } from "@mysten/sui/transactions";
 import { useMutation } from "@tanstack/react-query";
-import { REGISTRY_PACKAGE_ID, HADATHA_MODULE, CLOCK_ID, SUI_TYPE } from "@/lib/constant";
+import { REGISTRY_PACKAGE_ID, EVENTS_MODULE, CLOCK_ID, SUI_TYPE } from "@/lib/constant";
 
 export const useRegisterUser = () => {
     const account = useCurrentAccount();
@@ -44,7 +44,7 @@ export const useRegisterUser = () => {
 
                 if (accountId) {
                     tx.moveCall({
-                        target: `${REGISTRY_PACKAGE_ID}::${HADATHA_MODULE}::register_for_event`,
+                        target: `${REGISTRY_PACKAGE_ID}::${EVENTS_MODULE}::register_for_event`,
                         typeArguments: [currency],
                         arguments: [
                             tx.object(event),
@@ -57,7 +57,7 @@ export const useRegisterUser = () => {
                     });
                 } else {
                     tx.moveCall({
-                        target: `${REGISTRY_PACKAGE_ID}::${HADATHA_MODULE}::register_for_event_guest`,
+                        target: `${REGISTRY_PACKAGE_ID}::${EVENTS_MODULE}::register_for_event_guest`,
                         typeArguments: [currency],
                         arguments: [
                             tx.object(event),

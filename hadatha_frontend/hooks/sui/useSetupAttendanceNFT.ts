@@ -1,7 +1,7 @@
 import { useCurrentAccount, useSignAndExecuteTransaction } from "@mysten/dapp-kit";
 import { Transaction } from "@mysten/sui/transactions";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { REGISTRY_PACKAGE_ID, HADATHA_MODULE, CLOCK_ID } from "@/lib/constant";
+import { REGISTRY_PACKAGE_ID, EVENTS_MODULE, CLOCK_ID } from "@/lib/constant";
 
 interface SetupNFTParams {
     eventId: string;
@@ -26,7 +26,7 @@ export const useSetupAttendanceNFT = () => {
 
                 // Convert strings to vector<u8> format
                 tx.moveCall({
-                    target: `${REGISTRY_PACKAGE_ID}::${HADATHA_MODULE}::enable_nft_collection`,
+                    target: `${REGISTRY_PACKAGE_ID}::${EVENTS_MODULE}::enable_nft_collection`,
                     arguments: [
                         tx.object(eventId),
                         tx.pure.string(nftName),
@@ -91,7 +91,7 @@ export const useUpdateNFTCollection = () => {
                 const tx = new Transaction();
 
                 tx.moveCall({
-                    target: `${REGISTRY_PACKAGE_ID}::${HADATHA_MODULE}::update_nft_collection`,
+                    target: `${REGISTRY_PACKAGE_ID}::${EVENTS_MODULE}::update_nft_collection`,
                     arguments: [
                         tx.object(eventId),
                         tx.pure.string(nftName),
@@ -143,7 +143,7 @@ export const useDisableNFTCollection = () => {
                 const tx = new Transaction();
 
                 tx.moveCall({
-                    target: `${REGISTRY_PACKAGE_ID}::${HADATHA_MODULE}::disable_nft_collection`,
+                    target: `${REGISTRY_PACKAGE_ID}::${EVENTS_MODULE}::disable_nft_collection`,
                     arguments: [
                         tx.object(eventId),
                         tx.object(CLOCK_ID),

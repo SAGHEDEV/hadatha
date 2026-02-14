@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useSuiClientQuery } from "@mysten/dapp-kit";
-import { REGISTRY_PACKAGE_ID, HADATHA_MODULE } from "@/lib/constant";
+import { REGISTRY_PACKAGE_ID, PROFILE_MODULE } from "@/lib/constant";
 
 export interface AccountDetails {
     id: string;
@@ -36,7 +36,7 @@ const parseAccountData = (fields: any): Omit<AccountDetails, 'id' | 'address'> =
 export const useGetAllAccountCreatedEvents = () => {
     return useSuiClientQuery("queryEvents", {
         query: {
-            MoveEventType: `${REGISTRY_PACKAGE_ID}::${HADATHA_MODULE}::AccountCreated`
+            MoveEventType: `${REGISTRY_PACKAGE_ID}::${PROFILE_MODULE}::AccountCreated`
         },
         order: "descending"
     });
@@ -120,7 +120,7 @@ export const useGetAccountsByOwner = (ownerAddress: string) => {
         {
             owner: ownerAddress,
             filter: {
-                StructType: `${REGISTRY_PACKAGE_ID}::${HADATHA_MODULE}::Account`
+                StructType: `${REGISTRY_PACKAGE_ID}::${PROFILE_MODULE}::Account`
             },
             options: {
                 showContent: true,

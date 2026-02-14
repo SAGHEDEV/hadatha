@@ -1,6 +1,6 @@
 import { useSuiClient } from "@mysten/dapp-kit";
 import { Transaction } from "@mysten/sui/transactions";
-import { REGISTRY_PACKAGE_ID, HADATHA_MODULE } from "@/lib/constant";
+import { REGISTRY_PACKAGE_ID, EVENTS_MODULE } from "@/lib/constant";
 import { useQuery } from "@tanstack/react-query";
 
 export const useCheckRegistered = (event: string, attendee: string) => {
@@ -11,7 +11,7 @@ export const useCheckRegistered = (event: string, attendee: string) => {
         queryFn: async () => {
             const tx = new Transaction();
             tx.moveCall({
-                target: `${REGISTRY_PACKAGE_ID}::${HADATHA_MODULE}::is_registered`,
+                target: `${REGISTRY_PACKAGE_ID}::${EVENTS_MODULE}::is_registered`,
                 arguments: [
                     tx.object(event),
                     tx.pure.address(attendee)

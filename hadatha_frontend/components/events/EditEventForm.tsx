@@ -1,7 +1,7 @@
 "use client"
 
 import { useFormContext } from "react-hook-form"
-import { CalendarIcon, Upload, MapPin, Clock } from "lucide-react"
+import { CalendarIcon, Upload, MapPin, Clock, Monitor, Globe, Lock } from "lucide-react"
 import { format } from "date-fns"
 
 import { cn } from "@/lib/utils"
@@ -14,7 +14,6 @@ import {
     FormMessage,
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
 import {
     Popover,
     PopoverContent,
@@ -22,18 +21,21 @@ import {
 } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import Switch from "@/components/ui/Switch"
 import { useState } from "react"
 import Image from "next/image"
 import { TagMultiSelect } from "./create/TagMultiSelect"
 import { OrganizerSelector } from "./create/OrganizerSelector"
 import { CustomFieldsBuilder } from "./create/CustomFieldsBuilder"
+import { RichTextEditor } from "@/components/ui/RichTextEditor"
 
 export function EditEventForm({ isLoading }: { isLoading: boolean }) {
     const { control, setValue, watch } = useFormContext()
     const [imagePreview, setImagePreview] = useState<string | null>(
         watch("imagePreviewUrl") || typeof watch("image") === "string" ? watch("image") : null
     )
-    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) =>    {
+    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
         if (file) {
             const url = URL.createObjectURL(file)
@@ -100,12 +102,12 @@ export function EditEventForm({ isLoading }: { isLoading: boolean }) {
                         <FormItem>
                             <FormLabel className="text-white">Description</FormLabel>
                             <FormControl>
-                                <Textarea
+                                <RichTextEditor
                                     disabled={isLoading}
-                                    placeholder="Tell us about your event..."
-                                    {...field}
                                     value={field.value ?? ''}
-                                    className="bg-white/5 border-white/10 text-white placeholder:text-white/40 focus:border-white/30 min-h-[150px] resize-y"
+                                    onChange={field.onChange}
+                                    placeholder="Tell us about your event..."
+                                    className="min-h-[200px]"
                                 />
                             </FormControl>
                             <FormMessage />
@@ -153,20 +155,167 @@ export function EditEventForm({ isLoading }: { isLoading: boolean }) {
 
                     <FormField
                         control={control}
-                        name="location"
+                        name="eventType"
                         render={({ field }) => (
-                            <FormItem className="col-span-2">
-                                <FormLabel className="text-white">Location</FormLabel>
+                            <FormItem className="col-span-2 space-y-4">
+                                <FormLabel className="text-white">Event Type</FormLabel>
                                 <FormControl>
-                                    <div className="relative">
-                                        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50" />
-                                        <Input disabled={isLoading} placeholder="Event location" {...field} value={field.value ?? ''} className="pl-10  bg-white/5 border-white/10 text-white placeholder:text-white/40 focus:border-white/30 h-12" />
-                                    </div>
+                                    <RadioGroup
+                                        onValueChange={(val) => {
+                                            field.onChange(val)
+                                            if (val === "virtual") {
+                                                setValue("location", "Virtual Event")
+                                            }
+                                        }}
+                                        defaultValue={field.value}
+                                        className="grid grid-cols-1 sm:grid-cols-2 gap-4"
+                                        disabled={isLoading}
+                                    >
+                                        <div>
+                                            <RadioGroupItem
+                                                value="physical"
+                                                id="physical"
+                                                className="peer sr-only"
+                                            />
+                                            <label
+                                                htmlFor="physical"
+                                                className="flex items-center gap-4 p-4 rounded-2xl border-2 border-white/5 bg-white/5 hover:bg-white/10 hover:border-white/10 peer-data-[state=checked]:border-white peer-data-[state=checked]:bg-white/10 transition-all cursor-pointer group"
+                                            >
+                                                <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                                    <MapPin className="w-5 h-5 text-white/40 peer-data-[state=checked]:group-[]:text-white" />
+                                                </div>
+                                                <div>
+                                                    <h4 className="font-bold text-white text-sm">Physical</h4>
+                                                    <p className="text-[10px] text-white/40">In-person at a location</p>
+                                                </div>
+                                            </label>
+                                        </div>
+
+                                        <div>
+                                            <RadioGroupItem
+                                                value="virtual"
+                                                id="virtual"
+                                                className="peer sr-only"
+                                            />
+                                            <label
+                                                htmlFor="virtual"
+                                                className="flex items-center gap-4 p-4 rounded-2xl border-2 border-white/5 bg-white/5 hover:bg-white/10 hover:border-white/10 peer-data-[state=checked]:border-white peer-data-[state=checked]:bg-white/10 transition-all cursor-pointer group"
+                                            >
+                                                <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                                    <Monitor className="w-5 h-5 text-white/40 peer-data-[state=checked]:group-[]:text-white" />
+                                                </div>
+                                                <div>
+                                                    <h4 className="font-bold text-white text-sm">Virtual</h4>
+                                                    <p className="text-[10px] text-white/40">Online via link</p>
+                                                </div>
+                                            </label>
+                                        </div>
+                                    </RadioGroup>
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
                         )}
                     />
+
+                    {watch("eventType") === "physical" ? (
+                        <FormField
+                            control={control}
+                            name="location"
+                            render={({ field }) => (
+                                <FormItem className="col-span-2">
+                                    <FormLabel className="text-white">Location</FormLabel>
+                                    <FormControl>
+                                        <div className="relative">
+                                            <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50" />
+                                            <Input disabled={isLoading} placeholder="Event location" {...field} value={field.value ?? ''} className="pl-10  bg-white/5 border-white/10 text-white placeholder:text-white/40 focus:border-white/30 h-12" />
+                                        </div>
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    ) : (
+                        <div className="col-span-2 space-y-6 animate-in fade-in slide-in-from-top-2 duration-300">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <FormField
+                                    control={control}
+                                    name="linkType"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel className="text-white">Platform</FormLabel>
+                                            <Select
+                                                onValueChange={field.onChange}
+                                                defaultValue={field.value}
+                                                disabled={isLoading}
+                                            >
+                                                <FormControl>
+                                                    <SelectTrigger className="bg-white/5 border-white/10 text-white h-12">
+                                                        <SelectValue placeholder="Select platform" />
+                                                    </SelectTrigger>
+                                                </FormControl>
+                                                <SelectContent className="bg-black border-white/10 text-white">
+                                                    <SelectItem value="google_meet">Google Meet</SelectItem>
+                                                    <SelectItem value="zoom">Zoom</SelectItem>
+                                                    <SelectItem value="teams">Microsoft Teams</SelectItem>
+                                                    <SelectItem value="discord">Discord</SelectItem>
+                                                    <SelectItem value="other">Other</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+
+                                <FormField
+                                    control={control}
+                                    name="eventLink"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel className="text-white">Event Link</FormLabel>
+                                            <FormControl>
+                                                <div className="relative">
+                                                    <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+                                                    <Input
+                                                        disabled={isLoading}
+                                                        placeholder="https://..."
+                                                        {...field}
+                                                        value={field.value ?? ''}
+                                                        className="bg-white/5 border-white/10 text-white placeholder:text-white/40 focus:border-white/30 h-12 pl-10"
+                                                    />
+                                                </div>
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            </div>
+
+                            <FormField
+                                control={control}
+                                name="isAnonymous"
+                                render={({ field }) => (
+                                    <FormItem className="flex flex-row items-center justify-between rounded-2xl border border-white/10 p-4 bg-white/5">
+                                        <div className="space-y-0.5">
+                                            <FormLabel className="text-white flex items-center gap-2">
+                                                <Lock className="w-4 h-4" />
+                                                Anonymous Link
+                                            </FormLabel>
+                                            <p className="text-xs text-white/40">
+                                                Only registered guests can see the link
+                                            </p>
+                                        </div>
+                                        <FormControl>
+                                            <Switch
+                                                checked={field.value}
+                                                onCheckedChange={field.onChange}
+                                                disabled={isLoading}
+                                            />
+                                        </FormControl>
+                                    </FormItem>
+                                )}
+                            />
+                        </div>
+                    )}
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

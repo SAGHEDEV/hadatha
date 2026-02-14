@@ -1,7 +1,7 @@
 import { useCurrentAccount, useSignAndExecuteTransaction } from "@mysten/dapp-kit";
 import { Transaction } from "@mysten/sui/transactions";
 import { useMutation } from "@tanstack/react-query";
-import { REGISTRY_PACKAGE_ID, HADATHA_MODULE, ACCOUNT_ROOT_ID } from "@/lib/constant";
+import { REGISTRY_PACKAGE_ID, PROFILE_MODULE, ACCOUNT_ROOT_ID } from "@/lib/constant";
 
 export interface CreateAccountParams {
     name: string;
@@ -27,7 +27,7 @@ export const useCreateAccount = () => {
                 const tx = new Transaction();
 
                 tx.moveCall({
-                    target: `${REGISTRY_PACKAGE_ID}::${HADATHA_MODULE}::create_account`,
+                    target: `${REGISTRY_PACKAGE_ID}::${PROFILE_MODULE}::create_account`,
                     arguments: [
                         tx.object(ACCOUNT_ROOT_ID),
                         tx.pure.vector("u8", Array.from(new TextEncoder().encode(name))),

@@ -1,7 +1,7 @@
 import { useCurrentAccount, useSignAndExecuteTransaction } from "@mysten/dapp-kit";
 import { Transaction } from "@mysten/sui/transactions";
 import { useMutation } from "@tanstack/react-query";
-import { REGISTRY_PACKAGE_ID, HADATHA_MODULE } from "@/lib/constant";
+import { REGISTRY_PACKAGE_ID, PROFILE_MODULE } from "@/lib/constant";
 
 export interface EditProfileParams {
     accountId: string; // The object ID of the Account object
@@ -28,7 +28,7 @@ export const useEditProfile = () => {
                 const tx = new Transaction();
 
                 tx.moveCall({
-                    target: `${REGISTRY_PACKAGE_ID}::${HADATHA_MODULE}::edit_profile`,
+                    target: `${REGISTRY_PACKAGE_ID}::${PROFILE_MODULE}::edit_profile`,
                     arguments: [
                         tx.object(accountId),
                         tx.pure.vector("u8", Array.from(new TextEncoder().encode(name))),

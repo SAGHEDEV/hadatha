@@ -26,6 +26,10 @@ const eventSchema = z.object({
     imagePreviewUrl: z.string().optional(),
     organizer: z.array(z.string()).optional(),
     tags: z.array(z.string()).optional(),
+    eventType: z.enum(["physical", "virtual"]),
+    eventLink: z.string().optional(),
+    linkType: z.string().optional(),
+    isAnonymous: z.boolean(),
     location: z.string().min(2, "Location is required"),
     location_lat: z.number().optional(),
     location_lng: z.number().optional(),
@@ -55,6 +59,14 @@ export default function CreateEventPage() {
     const methods = useForm<z.infer<typeof eventSchema>>({
         resolver: zodResolver(eventSchema),
         defaultValues: {
+            title: "",
+            description: "",
+            location: "",
+            eventType: "physical",
+            isAnonymous: false,
+            startTime: "",
+            endTime: "",
+            maxAttendees: 1,
             ticketType: "free",
             registrationFields: [],
             organizer: [],
@@ -157,6 +169,10 @@ export default function CreateEventPage() {
                 title: data.title,
                 description: data.description,
                 location: data.location,
+                isVirtual: data.eventType === "virtual",
+                link: data.eventLink || "",
+                linkType: data.linkType || "",
+                isAnonymous: data.isAnonymous || false,
                 startTime: startDateTime.getTime(),
                 endTime: endDateTime.getTime(),
                 imageUrl: image_url,
@@ -217,14 +233,14 @@ export default function CreateEventPage() {
                             <Users className="w-10 h-10 text-white" />
                         </div>
                         <div>
-                            <h1 className="text-3xl font-black text-white mb-3">Join Hadatha</h1>
+                            <h1 className="text-3xl font-bold text-white mb-3">Join Hadatha</h1>
                             <p className="text-white/50 max-w-sm mx-auto leading-relaxed">
                                 To create and manage events, you first need to initialize your on-chain identity. This is a one-time process.
                             </p>
                         </div>
                         <Button
-                            onClick={() => router.push("/profile")}
-                            className="bg-white text-black hover:bg-white/90 rounded-full px-12 py-7 h-auto text-lg font-bold shadow-xl active:scale-95 transition-all cursor-pointer"
+                            onClick={() => router.push("/my-profile")}
+                            className="bg-white text-black hover:bg-white/90 rounded-full px-12 py-4 h-auto text-lg font-bold shadow-xl active:scale-95 transition-all cursor-pointer"
                         >
                             Create Profile
                         </Button>

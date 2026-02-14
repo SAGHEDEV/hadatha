@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useSuiClientQuery } from "@mysten/dapp-kit";
 import { SuiObjectResponse } from "@mysten/sui/client";
-import { REGISTRY_PACKAGE_ID, HADATHA_MODULE, ACCOUNT_ROOT_ID } from "@/lib/constant";
+import { REGISTRY_PACKAGE_ID, EVENTS_MODULE, ACCOUNT_ROOT_ID } from "@/lib/constant";
 import { deriveObjectID, normalizeSuiAddress } from '@mysten/sui/utils';
 import { bcs } from "@mysten/sui/bcs";
 import { Event } from "@/types";
@@ -42,7 +42,7 @@ const getAvatarUrl = (address: string, name?: string): string => {
 export const useGetAllEvents = (refetchInterval?: number) => {
     return useSuiClientQuery("queryEvents", {
         query: {
-            MoveEventType: `${REGISTRY_PACKAGE_ID}::${HADATHA_MODULE}::EventCreated`
+            MoveEventType: `${REGISTRY_PACKAGE_ID}::${EVENTS_MODULE}::EventCreated`
         },
         order: "descending"
     }, {

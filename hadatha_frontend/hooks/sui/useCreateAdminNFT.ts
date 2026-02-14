@@ -1,7 +1,7 @@
 import { useCurrentAccount, useSignAndExecuteTransaction } from "@mysten/dapp-kit";
 import { Transaction } from "@mysten/sui/transactions";
 import { useMutation } from "@tanstack/react-query";
-import { REGISTRY_PACKAGE_ID, HADATHA_MODULE, CLOCK_ID } from "@/lib/constant";
+import { REGISTRY_PACKAGE_ID, EVENTS_MODULE, CLOCK_ID } from "@/lib/constant";
 
 export const useCreateAdminNFT = () => {
     const account = useCurrentAccount();
@@ -17,7 +17,7 @@ export const useCreateAdminNFT = () => {
                 const tx = new Transaction();
 
                 tx.moveCall({
-                    target: `${REGISTRY_PACKAGE_ID}::${HADATHA_MODULE}::admin_mint_nft_for_attendee`,
+                    target: `${REGISTRY_PACKAGE_ID}::${EVENTS_MODULE}::admin_mint_nft_for_attendee`,
                     arguments: [
                         tx.object(event),
                         tx.pure.address(attendee),

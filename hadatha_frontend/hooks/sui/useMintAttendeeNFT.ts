@@ -1,7 +1,7 @@
 import { useCurrentAccount, useSignAndExecuteTransaction } from "@mysten/dapp-kit";
 import { Transaction } from "@mysten/sui/transactions";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { REGISTRY_PACKAGE_ID, HADATHA_MODULE, CLOCK_ID } from "@/lib/constant";
+import { REGISTRY_PACKAGE_ID, EVENTS_MODULE, CLOCK_ID } from "@/lib/constant";
 
 interface MintNFTParams {
     eventId: string;
@@ -25,7 +25,7 @@ export const useMintAttendanceNFT = () => {
 
                 if (accountId) {
                     tx.moveCall({
-                        target: `${REGISTRY_PACKAGE_ID}::${HADATHA_MODULE}::mint_attendance_nft`,
+                        target: `${REGISTRY_PACKAGE_ID}::${EVENTS_MODULE}::mint_attendance_nft`,
                         arguments: [
                             tx.object(eventId),
                             tx.object(accountId),
@@ -34,7 +34,7 @@ export const useMintAttendanceNFT = () => {
                     });
                 } else {
                     tx.moveCall({
-                        target: `${REGISTRY_PACKAGE_ID}::${HADATHA_MODULE}::mint_attendance_nft_guest`,
+                        target: `${REGISTRY_PACKAGE_ID}::${EVENTS_MODULE}::mint_attendance_nft_guest`,
                         arguments: [
                             tx.object(eventId),
                             tx.pure.vector("u8", Array.from(new TextEncoder().encode(attendeeName || "Guest Attendee"))),
@@ -96,7 +96,7 @@ export const useAdminMintNFT = () => {
 
                 if (attendeeAccountId) {
                     tx.moveCall({
-                        target: `${REGISTRY_PACKAGE_ID}::${HADATHA_MODULE}::admin_mint_nft_for_attendee`,
+                        target: `${REGISTRY_PACKAGE_ID}::${EVENTS_MODULE}::admin_mint_nft_for_attendee`,
                         arguments: [
                             tx.object(eventId),
                             tx.pure.address(attendeeAddress),
@@ -106,7 +106,7 @@ export const useAdminMintNFT = () => {
                     });
                 } else {
                     tx.moveCall({
-                        target: `${REGISTRY_PACKAGE_ID}::${HADATHA_MODULE}::admin_mint_nft_for_attendee_guest`,
+                        target: `${REGISTRY_PACKAGE_ID}::${EVENTS_MODULE}::admin_mint_nft_for_attendee_guest`,
                         arguments: [
                             tx.object(eventId),
                             tx.pure.address(attendeeAddress),

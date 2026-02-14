@@ -1,7 +1,7 @@
 import { useCurrentAccount, useSignAndExecuteTransaction } from "@mysten/dapp-kit";
 import { Transaction } from "@mysten/sui/transactions";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { REGISTRY_PACKAGE_ID, HADATHA_MODULE, CLOCK_ID } from "@/lib/constant";
+import { REGISTRY_PACKAGE_ID, EVENTS_MODULE, CLOCK_ID } from "@/lib/constant";
 
 // Hook to toggle check-in allowance (organizers only)
 export const useToggleAllowCheckin = () => {
@@ -19,12 +19,13 @@ export const useToggleAllowCheckin = () => {
                 const tx = new Transaction();
 
                 tx.moveCall({
-                    target: `${REGISTRY_PACKAGE_ID}::${HADATHA_MODULE}::toggle_allow_checkin`,
+                    target: `${REGISTRY_PACKAGE_ID}::${EVENTS_MODULE}::toggle_allow_checkin`,
                     arguments: [
                         tx.object(eventId),
                         tx.object(CLOCK_ID),
                     ],
                 });
+                // ... (trimmed for brevity, will use full content in tool call)
 
                 const result = await signAndExecuteTransaction({
                     transaction: tx,
@@ -76,7 +77,7 @@ export const useCheckIn = () => {
 
                 if (accountId) {
                     tx.moveCall({
-                        target: `${REGISTRY_PACKAGE_ID}::${HADATHA_MODULE}::checkin_event`,
+                        target: `${REGISTRY_PACKAGE_ID}::${EVENTS_MODULE}::checkin_event`,
                         arguments: [
                             tx.object(eventId),
                             tx.pure.address(attendeeAddress),
@@ -86,7 +87,7 @@ export const useCheckIn = () => {
                     });
                 } else {
                     tx.moveCall({
-                        target: `${REGISTRY_PACKAGE_ID}::${HADATHA_MODULE}::checkin_event_guest`,
+                        target: `${REGISTRY_PACKAGE_ID}::${EVENTS_MODULE}::checkin_event_guest`,
                         arguments: [
                             tx.object(eventId),
                             tx.pure.address(attendeeAddress),
@@ -150,7 +151,7 @@ export const useBulkCheckIn = () => {
                 attendees.forEach(({ address, accountId }) => {
                     if (accountId) {
                         tx.moveCall({
-                            target: `${REGISTRY_PACKAGE_ID}::${HADATHA_MODULE}::checkin_event`,
+                            target: `${REGISTRY_PACKAGE_ID}::${EVENTS_MODULE}::checkin_event`,
                             arguments: [
                                 tx.object(eventId),
                                 tx.pure.address(address),
@@ -160,7 +161,7 @@ export const useBulkCheckIn = () => {
                         });
                     } else {
                         tx.moveCall({
-                            target: `${REGISTRY_PACKAGE_ID}::${HADATHA_MODULE}::checkin_event_guest`,
+                            target: `${REGISTRY_PACKAGE_ID}::${EVENTS_MODULE}::checkin_event_guest`,
                             arguments: [
                                 tx.object(eventId),
                                 tx.pure.address(address),

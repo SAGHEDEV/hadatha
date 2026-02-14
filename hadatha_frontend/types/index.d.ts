@@ -32,6 +32,10 @@ export interface Event {
     checkedInCount?: number;
     nft_config?: NFTConfig;
     price?: string;
+    is_virtual?: boolean;
+    link?: string;
+    link_type?: string;
+    is_anonymous?: boolean;
 }
 
 export interface TicketTier {

@@ -12,6 +12,10 @@ import {
     Users,
     CheckCircle,
     Settings,
+    Monitor,
+    Video,
+    Lock,
+    ExternalLink,
 } from "lucide-react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
@@ -26,6 +30,7 @@ import { useRouter } from "next/navigation";
 import { useMintAttendanceNFT } from "@/hooks/sui/useMintAttendeeNFT";
 import { EventMap } from "../events/EventMap";
 import { formatAmount, getCurrencyLabel } from "@/lib/coin";
+import { cn } from "@/lib/utils";
 
 // Helper function to format date
 export const formatDate = (dateString: string): string => {
@@ -138,7 +143,33 @@ const EventDetails = ({
     // Ticket Tiers
     const ticketTiers = event.ticket_tiers || []
 
-    console.log(event)
+    // Platform Icon Helper
+    const getPlatformIcon = (linkType: string) => {
+        switch (linkType?.toLowerCase()) {
+            case 'zoom':
+                return <Video className="w-5 h-5 text-blue-400" />
+            case 'google_meet':
+                return <Video className="w-5 h-5 text-green-400" />
+            case 'teams':
+                return <Video className="w-5 h-5 text-purple-400" />
+            case 'discord':
+                return <Video className="w-5 h-5 text-indigo-400" />
+            default:
+                return <Globe className="w-5 h-5 text-white/40" />
+        }
+    }
+
+    const getPlatformLabel = (linkType: string) => {
+        switch (linkType?.toLowerCase()) {
+            case 'google_meet': return 'Google Meet'
+            case 'teams': return 'Microsoft Teams'
+            case 'zoom': return 'Zoom'
+            case 'discord': return 'Discord'
+            default: return 'Online Event'
+        }
+    }
+
+    const canSeeLink = !event.is_anonymous || isRegistered || isOrganizer
 
 
     return (
@@ -188,8 +219,8 @@ const EventDetails = ({
                                 <span>{preview ? event.date : formatDate(event.date)}</span>
                             </div>
                             <div className="flex items-center gap-2">
-                                <MapPin className="w-5 h-5" />
-                                <span>{event.location}</span>
+                                {event.is_virtual ? <Monitor className="w-5 h-5" /> : <MapPin className="w-5 h-5" />}
+                                <span>{event.is_virtual ? getPlatformLabel(event.link_type || '') : event.location}</span>
                             </div>
                         </div>
                     </div>
@@ -197,17 +228,62 @@ const EventDetails = ({
                     {/* Description */}
                     <div className="flex flex-col gap-4">
                         <h2 className="text-2xl font-bold text-white">About Event</h2>
-                        <p className="text-white/70 leading-relaxed text-lg">
-                            {event.description}
-                        </p>
+                        <div
+                            className={cn(
+                                "prose prose-invert max-w-none text-white/70 leading-relaxed text-lg",
+                                "prose-p:my-2 prose-headings:text-white prose-strong:text-white prose-a:text-blue-400",
+                                "prose-ul:list-disc prose-ol:list-decimal prose-li:my-1"
+                            )}
+                            dangerouslySetInnerHTML={{ __html: event.description }}
+                        />
                     </div>
 
-                    {/* Event Map */}
-                    {latitude && longitude && (
-                        <div className="flex flex-col gap-4">
-                            <h2 className="text-2xl font-bold text-white">Location Map</h2>
-                            <EventMap lat={latitude} lng={longitude} className="h-[300px]" />
+                    {/* Event Map / Virtual Link */}
+                    {event.is_virtual ? (
+                        <div className="flex flex-col gap-4 p-8 rounded-3xl bg-white/5 border border-white/10 overflow-hidden relative group">
+                            <div className="absolute -top-12 -right-12 w-48 h-48 bg-white/5 rounded-full blur-3xl group-hover:bg-white/10 transition-colors" />
+                            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative z-10">
+                                <div className="flex items-center gap-4">
+                                    <div className="p-4 rounded-2xl bg-white/10 border border-white/20">
+                                        {getPlatformIcon(event.link_type || '')}
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <h3 className="text-xl font-bold text-white">Event Link</h3>
+                                        <p className="text-white/40 text-sm">
+                                            {event.is_anonymous ? 'This is a private link' : 'Join the conference online'}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {canSeeLink ? (
+                                    <Link
+                                        href={event.link || '#'}
+                                        target="_blank"
+                                        className="flex items-center gap-2 px-6 py-3 rounded-full bg-white text-black font-bold hover:bg-gray-200 transition-all hover:scale-105"
+                                    >
+                                        Join Now
+                                        <ExternalLink className="w-4 h-4" />
+                                    </Link>
+                                ) : (
+                                    <div className="flex items-center gap-3 px-6 py-3 rounded-full bg-white/10 border border-white/10 text-white/60">
+                                        <Lock className="w-4 h-4" />
+                                        <span>Register to Reveal Link</span>
+                                    </div>
+                                )}
+                            </div>
+                            {canSeeLink && event.link && (
+                                <p className="mt-4 text-xs font-mono text-white/20 break-all border-t border-white/5 pt-4">
+                                    {event.link}
+                                </p>
+                            )}
                         </div>
+                    ) : (
+                        latitude && longitude && (
+                            <div className="flex flex-col gap-4">
+                                <h2 className="text-2xl font-bold text-white">Location Map</h2>
+                                <EventMap lat={latitude} lng={longitude} className="h-[300px]" />
+                            </div>
+                        )
                     )}
 
                     {/* Tags */}
@@ -341,12 +417,12 @@ const EventDetails = ({
 
                             <div className="flex items-start gap-4">
                                 <div className="p-3 rounded-xl bg-white/5 border border-white/10">
-                                    <MapPin className="w-5 h-5 text-white" />
+                                    {event.is_virtual ? <Monitor className="w-5 h-5 text-white" /> : <MapPin className="w-5 h-5 text-white" />}
                                 </div>
                                 <div className="flex flex-col">
-                                    <span className="text-white/60 text-sm">Location</span>
+                                    <span className="text-white/60 text-sm">{event.is_virtual ? 'Platform' : 'Location'}</span>
                                     <span className="text-white font-medium">
-                                        {event.location}
+                                        {event.is_virtual ? getPlatformLabel(event.link_type || '') : event.location}
                                     </span>
                                 </div>
                             </div>

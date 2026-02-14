@@ -1,7 +1,7 @@
 import { useCurrentAccount, useSignAndExecuteTransaction } from "@mysten/dapp-kit";
 import { Transaction } from "@mysten/sui/transactions";
 import { useMutation } from "@tanstack/react-query";
-import { REGISTRY_PACKAGE_ID, HADATHA_MODULE, EVENT_REGISTRY_ID, CLOCK_ID } from "@/lib/constant";
+import { REGISTRY_PACKAGE_ID, EVENTS_MODULE, EVENT_REGISTRY_ID, CLOCK_ID } from "@/lib/constant";
 import { useGetDerivedAddress } from "./useCheckAccountExistence";
 
 interface CreateEventParams {
@@ -13,6 +13,10 @@ interface CreateEventParams {
     endTime: number;
     imageUrl: string;
     event_hex: string;
+    isVirtual: boolean;
+    link: string;
+    linkType: string;
+    isAnonymous: boolean;
     registrationFieldNames: string[];
     registrationFieldTypes: string[];
     organizers: string[];
@@ -39,13 +43,17 @@ export const useCreateEvent = () => {
                 const tx = new Transaction();
 
                 tx.moveCall({
-                    target: `${REGISTRY_PACKAGE_ID}::${HADATHA_MODULE}::create_event`,
+                    target: `${REGISTRY_PACKAGE_ID}::${EVENTS_MODULE}::create_event`,
                     arguments: [
                         tx.object(EVENT_REGISTRY_ID),
                         tx.object(derivedAddress!),
                         tx.pure.string(params.title),
                         tx.pure.string(params.description),
                         tx.pure.string(params.location),
+                        tx.pure.bool(params.isVirtual),
+                        tx.pure.string(params.link),
+                        tx.pure.string(params.linkType),
+                        tx.pure.bool(params.isAnonymous),
                         tx.pure.u64(params.startTime),
                         tx.pure.u64(params.endTime),
                         tx.pure.string(params.imageUrl),

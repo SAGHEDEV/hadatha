@@ -110,9 +110,9 @@ const EventsPage = () => {
             </div>
 
             {/* Filters Section */}
-            <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center bg-white/5 backdrop-blur-md border border-white/10 p-4 rounded-3xl">
-                {/* Search */}
-                <div className="relative w-full md:w-96">
+            <div className="flex flex-col gap-4 bg-white/5 backdrop-blur-md border border-white/10 p-4 rounded-3xl">
+                {/* Search - Full width on mobile, fixed width on desktop */}
+                <div className="relative w-full md:max-w-md">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
                     <input
                         type="text"
@@ -123,15 +123,15 @@ const EventsPage = () => {
                     />
                 </div>
 
-                <div className="flex flex-wrap gap-3 items-center w-full md:w-auto">
-                    {/* Category Filter */}
-                    <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 no-scrollbar">
+                {/* Category Filter - Horizontal scroll */}
+                <div className="relative -mx-4 px-4">
+                    <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
                         {categories.map((cat) => (
                             <button
                                 key={cat}
                                 onClick={() => setActiveCategory(cat)}
-                                className={`px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap ${activeCategory === cat
-                                    ? "bg-white text-black"
+                                className={`px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap shrink-0 ${activeCategory === cat
+                                    ? "bg-white text-black shadow-lg"
                                     : "bg-white/5 text-white/60 hover:bg-white/10 hover:text-white"
                                     }`}
                             >
@@ -139,6 +139,8 @@ const EventsPage = () => {
                             </button>
                         ))}
                     </div>
+                    {/* Fade effect on right edge */}
+                    <div className="absolute right-0 top-0 bottom-2 w-12 bg-linear-to-l from-black/20 to-transparent pointer-events-none" />
                 </div>
             </div>
 

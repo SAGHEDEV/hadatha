@@ -1,7 +1,7 @@
 "use client"
 
 import { useFormContext } from "react-hook-form"
-import { CalendarIcon, Upload, MapPin, Clock, Monitor, Globe, Lock } from "lucide-react"
+import { CalendarIcon, MapPin, Clock, Monitor, Globe, Lock } from "lucide-react"
 import { format } from "date-fns"
 
 import { cn } from "@/lib/utils"
@@ -23,8 +23,6 @@ import { Calendar } from "@/components/ui/calendar"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import Switch from "@/components/ui/Switch"
-import { useState } from "react"
-import Image from "next/image"
 import { TagMultiSelect } from "./create/TagMultiSelect"
 import { OrganizerSelector } from "./create/OrganizerSelector"
 import { CustomFieldsBuilder } from "./create/CustomFieldsBuilder"
@@ -32,54 +30,12 @@ import { RichTextEditor } from "@/components/ui/RichTextEditor"
 
 export function EditEventForm({ isLoading }: { isLoading: boolean }) {
     const { control, setValue, watch } = useFormContext()
-    const [imagePreview, setImagePreview] = useState<string | null>(
-        watch("imagePreviewUrl") || typeof watch("image") === "string" ? watch("image") : null
-    )
-    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0]
-        if (file) {
-            const url = URL.createObjectURL(file)
-            setImagePreview(url)
-            setValue("image", file)
-            setValue("imagePreviewUrl", url)
-        }
-    }
 
     return (
         <div className="space-y-8 max-w-4xl mx-auto pb-20">
             {/* Event Details Section */}
             <div className="space-y-6">
                 <h2 className="text-2xl font-bold text-white">Event Details</h2>
-
-                {/* Image Upload */}
-                <div className={cn(
-                    "relative h-64 w-full rounded-3xl border-2 border-dashed border-white/20 bg-white/5 overflow-hidden group transition-colors",
-                    !isLoading && "hover:border-white/40",
-                    isLoading && "opacity-50 cursor-not-allowed"
-                )}>
-                    {imagePreview ? (
-                        <>
-                            <Image src={imagePreview} alt="Preview" fill className="object-cover" />
-                            {!isLoading && (
-                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                    <p className="text-white font-medium">Click to change image</p>
-                                </div>
-                            )}
-                        </>
-                    ) : (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center text-white/60 gap-2">
-                            <Upload className="w-10 h-10" />
-                            <p>Click to upload event flyer or backdrop</p>
-                        </div>
-                    )}
-                    <Input
-                        type="file"
-                        accept="image/*"
-                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                        onChange={handleImageChange}
-                        disabled={isLoading}
-                    />
-                </div>
 
                 <FormField
                     control={control}

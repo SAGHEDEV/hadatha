@@ -108,7 +108,7 @@ export function OrganizerSelector({ value = [], onChange, disabled }: OrganizerS
                                         <Check
                                             className={cn(
                                                 "mr-2 h-4 w-4",
-                                                value.includes(account.id) ? "opacity-100" : "opacity-0"
+                                                value.includes(account.address) ? "opacity-100" : "opacity-0"
                                             )}
                                         />
                                         <div className="flex items-center gap-2">

@@ -23,7 +23,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "./button"
-import { useCallback, useState } from "react"
+import { useCallback, useState, useEffect } from "react"
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -120,6 +120,13 @@ export function RichTextEditor({
         onFocus: () => setIsFocused(true),
         onBlur: () => setIsFocused(false),
     })
+
+    // Update editor content when value prop changes
+    useEffect(() => {
+        if (editor && value !== editor.getHTML()) {
+            editor.commands.setContent(value)
+        }
+    }, [editor, value])
 
     const setLink = useCallback(() => {
         if (!editor) return
